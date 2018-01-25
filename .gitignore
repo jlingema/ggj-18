@@ -13,6 +13,9 @@ luac.out
 *.obj
 *.elf
 
+# pico-8 files
+*.p8.png
+
 # Precompiled Headers
 *.gch
 *.pch
