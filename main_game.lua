@@ -355,9 +355,16 @@ Player = {
     _y = 99,
     _w = 2,
     _h = 5,
+    _spr_idx=0,
+    _frames_per_spr=5,
+    _frame_ctr=0,
     dir=1,
     cldn=0,
+    moving=false,
     update = function()
+        if moving then
+            Player._frame_ctr += 1
+        end
         Player.cldn = Player.cldn - 1
         if Player.cldn < 0 then Player.cldn = 0 end
         for j in all(ALIEN_JELLY) do
@@ -366,12 +373,17 @@ Player = {
             del(ALIEN_JELLY, j)
             sfx(4)
         end
+        moving=false
     end
     end,
     move = function(dx, dy)
+        if Player.cldn > 0 then
+            return
+        end
         Player._x = Player._x + dx*PLR_SPEED
         if dx > 0 then Player.dir = 1 else Player.dir = -1 end
         Player._y = Player._y + dy*PLR_SPEED
+        moving=true
     end,
     shoot = function()
         if Player.cldn <= 0 then
@@ -381,7 +393,17 @@ Player = {
         end
     end,
     draw = function()
-        rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
+        local flip = Player.dir < 0
+        if Player._frame_ctr > Player._frames_per_spr then
+            Player._frame_ctr = 0
+            Player._spr_idx = (Player._spr_idx+1)%2
+        end
+        if Player.cldn > 0 then
+            spr(27, Player._x, Player._y, 1, 1, flip)
+            return
+        end
+        spr(25+Player._spr_idx, Player._x, Player._y, 1, 1, flip)
+        -- rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
     end,
 }
 
@@ -424,7 +446,7 @@ function update_bullet(bullet, enemies)
     pre_x = bullet.x
     bullet.x = bullet.x+bullet.speed
     bullet.y = bullet.y-1
-    if bullet.y < GROUND_Y then bullet.y = GROUND_Y end
+    if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
     for e in all (enemies) do
         if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
             damage_enemy(e, bullet.dmg)
@@ -444,7 +466,11 @@ EnemyFactory = {
             _x = x,
             _y = GROUND_Y,
             _hp = WK_HP,
-            _cdwn = 0
+            _cdwn = 0,
+            _sprite_idx=0,
+            _frame_per_sprite=10,
+            _frame_ctr=0,
+            _dir=1
         }
         add(ENEMIES, e)
         return e
@@ -454,16 +480,17 @@ EnemyFactory = {
 function update_enemy(enemy)
     min = Tower._x - enemy._x
     dy = Tower._y - enemy._y
-
+    enemy._frame_ctr += 1
     if enemy._cdwn > 0 then
         enemy._cdwn = enemy._cdwn - 1
         return
     end
-
     if abs(min) < 3 then
         Tower.damage(WK_DMG)
         enemy._cdwn = WK_ATK_SPEED
         sfx(3)
+        enemy._dir = -1
+        if min < 0 then enemy._dir = 1 end
         return
     end
     closest = nil
@@ -484,6 +511,8 @@ function update_enemy(enemy)
         enemy._cdwn = WK_ATK_SPEED
         sfx(3)
     end
+    enemy._dir = -1
+    if min < 0 then enemy._dir = 1 end
     -- if dy > 0 then
     --     enemy._y = enemy._y+1
     -- else
@@ -493,7 +522,17 @@ function update_enemy(enemy)
 end
 
 function draw_enemy(enemy)
-    rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
+    if enemy._frame_ctr > enemy._frame_per_sprite then
+        enemy._sprite_idx = (1+enemy._sprite_idx)%2
+        enemy._frame_ctr=0
+    end
+    local flip = enemy._dir > 0
+    if enemy._cdwn > 0 then
+        spr(11, enemy._x, enemy._y, 1, 1, flip)
+        return
+    end
+    spr(9 + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
+    -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
 
 function damage_enemy(enemy, dmg)
@@ -582,6 +621,7 @@ function _update()
     if Tower._hp <= 0 then return end
 
     update_cmds()
+    Player.update()
 
     for gfx in all(GFXS) do
         update_gfx(gfx)
@@ -603,7 +643,6 @@ function _update()
  if (sbtn(5)) then Player.shoot() end
  Tower.update()
  Camera.update()
- Player.update()
  GameState.update()
  for e in all (ENEMIES) do
     update_enemy(e)
