@@ -180,6 +180,7 @@ update_anti_personnel_turret = function(t)
         if min < 32 and min > -32 then
             if min < 0 then t.dir = -1 else t.dir = 1 end
             BulletFactory.create(x,y,AP_DMG,3*t.dir)
+            sfx(2)
             t.shooting = true
             t.cdwn = t.speed
         end
@@ -294,7 +295,8 @@ function update_enemy(enemy)
     min = Tower._x - enemy._x
     dy = Tower._y - enemy._y
     if abs(min) < 3 then
-        Tower.damage(1)
+        Tower.damage(WK_DMG)
+        sfx(3)
         return
     end
     closest = nil
@@ -311,7 +313,8 @@ function update_enemy(enemy)
         enemy._x = enemy._x-1
     end
     if abs(min) < 3 and closest then
-        damage_anti_personnel_turret(closest, 5)
+        damage_anti_personnel_turret(closest, WK_DMG)
+        sfx(3)
     end
     -- if dy > 0 then
     --     enemy._y = enemy._y+1
