@@ -7,6 +7,7 @@ local Camera = {
         Camera._y = Camera._y + dy
         if(Camera.scr_shk_str > 0.1) then Camera.scr_shk_str=Camera.scr_shk_str*0.6
         else Camera.scr_shk_str=0 end
+        camera(Camera.x(), Camera.y())
     end,
     shake = function()
         Camera.scr_shk_str = 4
@@ -16,9 +17,6 @@ local Camera = {
     end,
     y = function()
         return Camera._y + (rnd (Camera.scr_shk_str*2)) - Camera.scr_shk_str
-    end,
-    transform = function(x,y)
-        return {x=x-Camera.x(), y=y-Camera.y()}
     end
 }
 

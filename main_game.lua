@@ -3,8 +3,8 @@ plr_y = 100
 cam_x = 0
 y = 128-32
 
- GameData = require('data')
- Camera = require('camera')
+GameData = require('data')
+Camera = require('camera')
 
 function _update()
  dx=0
@@ -20,6 +20,5 @@ end
 function _draw()
  rectfill(0,0,127,127,1)
  rectfill(0,99,127,127,2)
- pos = Camera.transform(plr_x, plr_y)
- circfill((pos.x)%127,(pos.y)%127,2,4)
+ circfill(plr_x%127,plr_y%127,2,4)
 end
