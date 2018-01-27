@@ -106,8 +106,8 @@ EnemyFactory = {
 }
 
 function update_enemy(enemy)
-    dx = Player._x - enemy._x
-    dy = Player._y - enemy._y
+    dx = Tower._x - enemy._x
+    dy = Tower._y - enemy._y
     if dx > 0 then
         enemy._x = enemy._x+1
     else
@@ -118,6 +118,7 @@ function update_enemy(enemy)
     else
         enemy._y = enemy._y-1
     end
+    if abs(dx) < 3 and abs(dy) < 3 then Tower.damage(1) end
 end
 
 function draw_enemy(enemy)
