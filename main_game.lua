@@ -6,6 +6,18 @@ PODS_ORIG_Y = -200
 PODS_Y_RAND = 50
 GROUND_Y = 100
 
+WAVE_TIME = 240
+AP_DMG = 0
+AP_SHOOT_SPEED = 5
+AP_HP = 10
+
+PLR_DMG = 2
+PLR_SPEED = 1
+PLR_SHOOT_SPEED = 10 -- larger = slower
+
+WK_DMG = 5
+WK_HP = 10
+
 PODS = {}
 ANTI_P_TURRETS = {}
 ENEMIES = {}
@@ -30,13 +42,41 @@ Camera = {
     draw = function()
         print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
         print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
-        print('hp:'.. Tower._hp, 100+Camera.x(), 8, 2)
+        print('wave:'.. GameState.wv, 90+Camera.x(), 0, 2)
+        print('hp:'.. Tower._hp, 90+Camera.x(), 8, 2)
+        if Tower._hp <= 0 then
+            print('game over', 50+Camera.x(), 64, 7)
+            return
+        end
+        if GameState.cur < 100 then
+            print(''.. (GameState.cur/10), 64+Camera.x(), 64, 7)
+        end
     end,
     x = function()
         return Camera._x + (rnd (Camera.scr_shk_str*2)) - Camera.scr_shk_str
     end,
     y = function()
         return Camera._y + (rnd (Camera.scr_shk_str*2)) - Camera.scr_shk_str
+    end
+}
+
+GameState = {
+    wv = 0,
+    wv_time = WAVE_TIME,
+    cur = WAVE_TIME,
+    update = function()
+        GameState.cur = GameState.cur - 1
+        if GameState.cur <= 0 then
+            GameState.cur = GameState.wv_time
+            GameState.wv = GameState.wv+1
+            GameState.next_wave()
+        end
+    end,
+    next_wave = function()
+        for i = 1,GameState.wv*2 do
+            local x = 100+(rnd(64))
+            EnemyFactory.createWeakling(x, GROUND_Y)
+        end
     end
 }
 
@@ -92,7 +132,8 @@ AntiPersonnelTurretFactory = {
             _y = y,
             dir = 1,
             cdwn = 0,
-            speed = 3,
+            speed = AP_SHOOT_SPEED,
+            hp = AP_HP,
             shooting = false,
         }
         add(ANTI_P_TURRETS, t)
@@ -117,11 +158,16 @@ update_anti_personnel_turret = function(t)
         end
         if min < 32 and min > -32 then
             if min < 0 then t.dir = -1 else t.dir = 1 end
-            BulletFactory.create(x,y,5,3*t.dir)
+            BulletFactory.create(x,y,AP_DMG,3*t.dir)
             t.shooting = true
             t.cdwn = t.speed
         end
     end
+end
+
+damage_anti_personnel_turret = function(t, dmg)
+    t.hp = t.hp - dmg
+    if t.hp <= 0 then del(ANTI_P_TURRETS, t) end
 end
 
 draw_anti_personnel_turret = function(t)
@@ -167,13 +213,13 @@ Player = {
         if Player.cldn < 0 then Player.cldn = 0 end
     end,
     move = function(dx, dy)
-        Player._x = Player._x + dx
+        Player._x = Player._x + dx*PLR_SPEED
         if dx > 0 then Player.dir = 1 else Player.dir = -1 end
-        Player._y = Player._y + dy
+        Player._y = Player._y + dy*PLR_SPEED
     end,
     shoot = function()
         if Player.cldn <= 0 then
-            Player.cldn = 10
+            Player.cldn = PLR_SHOOT_SPEED
             BulletFactory.create(Player._x, Player._y, 5, Player.dir*5)
         end
     end,
@@ -212,11 +258,11 @@ function draw_bullet(bullet)
 end
 
 EnemyFactory = {
-    createWeakling = function(x,y)
+    createWeakling = function(x)
         e = {
             _x = x,
-            _y = y,
-            _hp = 10
+            _y = GROUND_Y,
+            _hp = WK_HP
         }
         add(ENEMIES, e)
         return e
@@ -224,19 +270,34 @@ EnemyFactory = {
 }
 
 function update_enemy(enemy)
-    dx = Tower._x - enemy._x
+    min = Tower._x - enemy._x
     dy = Tower._y - enemy._y
-    if dx > 0 then
+    if abs(min) < 3 then
+        Tower.damage(1)
+        return
+    end
+    closest = nil
+    for t in all(ANTI_P_TURRETS) do
+        dx = t._x - enemy._x
+        if abs(dx) < abs(min) then
+            closest = t
+            min = dx
+        end
+    end
+    if min > 0 then
         enemy._x = enemy._x+1
     else
         enemy._x = enemy._x-1
+    end
+    if abs(min) < 3 and closest then
+        damage_anti_personnel_turret(closest, 5)
     end
     -- if dy > 0 then
     --     enemy._y = enemy._y+1
     -- else
     --     enemy._y = enemy._y-1
     -- end
-    if abs(dx) < 3 then Tower.damage(1) end
+
 end
 
 function draw_enemy(enemy)
@@ -248,10 +309,8 @@ function damage_enemy(enemy, dmg)
     if enemy._hp <= 0 then del(ENEMIES, enemy) end
 end
 
--- todo remove this and have an enemy spawner logic thingy
-EnemyFactory.createWeakling(30, GROUND_Y)
-
 function _update()
+    if Tower._hp <= 0 then return end
     for p in all(PODS) do
         update_pod(p)
     end
@@ -272,6 +331,7 @@ function _update()
  if (btn(5)) then Player.shoot() end
  Camera.update()
  Player.update()
+ GameState.update()
  for e in all (ENEMIES) do
     update_enemy(e)
  end
