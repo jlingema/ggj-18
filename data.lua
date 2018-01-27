@@ -1,4 +1,0 @@
-local GameData = {
-}
-
-return GameData
