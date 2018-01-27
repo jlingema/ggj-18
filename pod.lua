@@ -1,17 +1,14 @@
-Camera = require('Camera')
-
 local PodFactory = {
-    create = function(x, y, type) {
+    create = function(x, y)
         return {
             x = x,
             y = y,
-            type = type,
 
-            draw = function() {
+            draw = function()
                 spr(1, x, y)
-            }
+            end
         }
-    }
+    end
 }
 
-return Pod
+return PodFactory
