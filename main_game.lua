@@ -25,6 +25,8 @@ AP_SHOOT_SPEED = 5
 AP_HP = 10
 AP_RANGE=48
 
+PLR_HP = 100
+PLR_HEAL = 5 / 30 -- 10 health back per sec
 PLR_DMG = 2
 PLR_SPEED = 1
 PLR_SHOOT_SPEED = 10 -- larger = slower
@@ -33,6 +35,7 @@ WK_DMG = 2
 WK_HP = 10
 WK_ATK_SPEED = 5
 WK_SPEED = 0.5
+
 
 PODS = {}
 POD_SPOT = {}
@@ -63,7 +66,7 @@ Camera = {
     _y=0,
     scr_shk_str = 0,
     update = function()
-        Camera._x = Player._x-64
+        Camera._x = PLAYER._x-64
         if(Camera.scr_shk_str > 0.1) then Camera.scr_shk_str=Camera.scr_shk_str*0.6
         else Camera.scr_shk_str=0 end
         camera(Camera.x(), Camera.y())
@@ -386,40 +389,91 @@ draw_smoke = function(s)
     rectfill(s._x, s._y, s._x+1, s._y+1,s._clr)
 end
 
-Player = {
-    _x = 0,
-    _y = 99,
-    _w = 2,
-    _h = 5,
-    dir=1,
-    cldn=0,
-    update = function()
-        Player.cldn = Player.cldn - 1
-        if Player.cldn < 0 then Player.cldn = 0 end
-        for j in all(ALIEN_JELLY) do
-        if abs(Player._x - j._x) < 3 then
+PlayerFactory = {
+    create = function(x)
+        pl = {
+            _x = 0,
+            _y = 99,
+            _w = 2,
+            _h = 5,
+            _spr_idx=0,
+            _frames_per_spr=5,
+            _frame_ctr=0,
+            dir=1,
+            cldn=0,
+            moving=false,
+            _hp=PLR_HP,
+        }
+        return pl
+    end
+}
+
+player_update = function()
+    if PLAYER.moving then
+        PLAYER._frame_ctr += 1
+    end
+    PLAYER._hp += PLR_HEAL
+    if PLAYER._hp > PLR_HP then
+        PLAYER._hp = PLR_HP
+    end
+    PLAYER.cldn = PLAYER.cldn - 1
+    if PLAYER.cldn < 0 then PLAYER.cldn = 0 end
+    for j in all(ALIEN_JELLY) do
+        if abs(PLAYER._x - j._x) < 3 then
             GameState.jelly = GameState.jelly + 1
             del(ALIEN_JELLY, j)
             sfx(4)
         end
     end
-    end,
-    move = function(dx, dy)
-        Player._x = Player._x + dx*PLR_SPEED
-        if dx > 0 then Player.dir = 1 else Player.dir = -1 end
-        Player._y = Player._y + dy*PLR_SPEED
-    end,
-    shoot = function()
-        if Player.cldn <= 0 then
-            Player.cldn = PLR_SHOOT_SPEED
-            BulletFactory.create(Player._x, Player._y, 5, Player.dir*5)
-            sfx(2)
-        end
-    end,
-    draw = function()
-        rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
-    end,
-}
+    PLAYER.moving=false
+end
+
+player_move = function(dx, dy)
+    if PLAYER.cldn > 0 then
+        return
+    end
+    PLAYER._x = PLAYER._x + dx*PLR_SPEED
+    if dx > 0 then PLAYER.dir = 1 else PLAYER.dir = -1 end
+    PLAYER._y = PLAYER._y + dy*PLR_SPEED
+    PLAYER.moving=true
+end
+
+player_shoot = function()
+    if PLAYER.cldn <= 0 then
+        PLAYER.cldn = PLR_SHOOT_SPEED
+        BulletFactory.create(PLAYER._x, PLAYER._y, 5, PLAYER.dir*5)
+        sfx(2)
+    end
+end
+
+player_draw = function()
+    local flip = PLAYER.dir < 0
+    if PLAYER._frame_ctr > PLAYER._frames_per_spr then
+        PLAYER._frame_ctr = 0
+        PLAYER._spr_idx = (PLAYER._spr_idx+1)%2
+    end
+    if PLAYER._hp < PLR_HP then
+        perc = PLAYER._hp / PLR_HP
+        draw_healthbar(PLAYER._x, PLAYER._y, perc)
+    end
+    if PLAYER.cldn > 0 then
+        spr(27, PLAYER._x, PLAYER._y, 1, 1, flip)
+        return
+    end
+    spr(25+PLAYER._spr_idx, PLAYER._x, PLAYER._y, 1, 1, flip)
+    -- rectfill(PLAYER._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
+end
+player_damage = function(dmg)
+    PLAYER._hp = PLAYER._hp - dmg
+end
+
+draw_healthbar = function(x,y,percent)
+    xmin = x
+    xmax = x + 8
+    rectfill(xmin, y, xmax, y-1, 0)
+    xmax = xmin + percent * 8
+    rectfill(xmin, y, xmax, y-1, 8)
+end
 
 JellyFactory = {
     create = function(x,y)
@@ -460,7 +514,7 @@ function update_bullet(bullet, enemies)
     pre_x = bullet.x
     bullet.x = bullet.x+bullet.speed
     bullet.y = bullet.y-1
-    if bullet.y < GROUND_Y then bullet.y = GROUND_Y end
+    if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
     for e in all (enemies) do
         if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
             damage_enemy(e, bullet.dmg)
@@ -480,7 +534,11 @@ EnemyFactory = {
             _x = x,
             _y = GROUND_Y,
             _hp = WK_HP,
-            _cdwn = 0
+            _cdwn = 0,
+            _sprite_idx=0,
+            _frame_per_sprite=10,
+            _frame_ctr=0,
+            _dir=1
         }
         add(ENEMIES, e)
         return e
@@ -510,10 +568,20 @@ function update_enemy(enemy)
     -- result = _find_closest(WALLS, enemy._x, result.entity)
 
     tower_dist = Tower._x - enemy._x
-    if abs(tower_dist) <= abs(result.dist) then result.entity = nil end
+    if abs(tower_dist) <= abs(result.dist) then 
+        result.entity = nil
+    else
+        dx = PLAYER._x - enemy._x
+        if abs(dx) < abs(result.dist) and abs(dx) < 3 then
+            player_damage(WK_DMG)
+            enemy._cdwn = WK_ATK_SPEED
+            sfx(3)
+            return
+        end
+    end
 
     if result.entity != nil then
-        -- Entity closer than tower
+        -- Entity closer than tower or player
         if result.dist > 0 then
             enemy._x = enemy._x+WK_SPEED
         else
@@ -542,7 +610,17 @@ function update_enemy(enemy)
 end
 
 function draw_enemy(enemy)
-    rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
+    if enemy._frame_ctr > enemy._frame_per_sprite then
+        enemy._sprite_idx = (1+enemy._sprite_idx)%2
+        enemy._frame_ctr=0
+    end
+    local flip = enemy._dir > 0
+    if enemy._cdwn > 0 then
+        spr(11, enemy._x, enemy._y, 1, 1, flip)
+        return
+    end
+    spr(9 + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
+    -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
 
 function damage_enemy(enemy, dmg)
@@ -601,14 +679,14 @@ function check_cmds(cmds)
                 -- error SFX
                 return
             end
-            
-            if not is_pod_spot_free(Player._x, cfg.size) then
+
+            if not is_pod_spot_free(PLAYER._x, cfg.size) then
                 -- error GFX?
                 -- error SFX
                 return
             end
 
-            PodFactory.create(Player._x, cfg.size, cfg.factory)
+            PodFactory.create(PLAYER._x, cfg.size, cfg.factory)
             GameState.jelly -= cfg.price
             GFXFactory.create(Tower._x + 5, Tower._y - 8 * Tower._h + 3, 48, 53, 4)
             return
@@ -640,6 +718,7 @@ function _update()
     if Tower._hp <= 0 then return end
 
     update_cmds()
+    player_update()
 
     for gfx in all(GFXS) do
         update_gfx(gfx)
@@ -654,17 +733,16 @@ function _update()
         update_anti_personnel_turret(t)
     end
  if (sbtn(0)) then
-    Player.move(-1, 0)
+    player_move(-1, 0)
  end
  if (sbtn(1)) then
-    Player.move(1, 0)
+    player_move(1, 0)
  end
  --if (sbtn(2)) then Camera.move(0, -1) end
  --if (sbtn(3)) then Camera.move(0, 1) end
- if (sbtn(5)) then Player.shoot() end
+ if (sbtn(5)) then player_shoot() end
  Tower.update()
  Camera.update()
- Player.update()
  GameState.update()
  for e in all (ENEMIES) do
     update_enemy(e)
@@ -684,7 +762,7 @@ function _draw()
  cls(1)
  rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),4)
  circfill(stone_x%127,stone_y%127,2,6)
- Player.draw()
+ player_draw()
  Camera.draw()
  Tower.draw()
 
@@ -721,6 +799,8 @@ function _init()
         show_ggj_logo(34,2.5,10)
     end
 end
+
+PLAYER = PlayerFactory.create(0)
 
 function show_ggj_logo(ggjy,ggjw,ggjs)
     ggjw=90+ggjw*30*ggjs
