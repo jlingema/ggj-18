@@ -67,9 +67,8 @@ end
 
 Tower = {
     _x = 0,
-    _y = 99,
-    _w = 6,
-    _h = 64,
+    _y = 100,
+    _h = 6,
     _hp = 1000,
     update = function()
     end,
@@ -77,7 +76,11 @@ Tower = {
         Tower._hp = Tower._hp - hp
     end,
     draw = function()
-        rectfill(Tower._x,Tower._y,Tower._x+Tower._w,Tower._y-Tower._h,6)
+        spr(32, Tower._x, Tower._y)
+        for i=1,Tower._h-2 do
+            spr(16, Tower._x, Tower._y - 8 * i)
+        end
+        spr(0, Tower._x, Tower._y - 8 * (Tower._h - 1))
     end
 }
 
