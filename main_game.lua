@@ -9,7 +9,7 @@ GROUND_Y = 100
 IS_IN_CMD_MODE = false
 LOCKED_BTN = -1
 CMDS = {}
-CMDS_MAX = 6
+CMDS_MAX = 4
 
 WAVE_TIME = 240
 AP_DMG = 1
@@ -28,6 +28,9 @@ PODS = {}
 ANTI_P_TURRETS = {}
 ENEMIES = {}
 BULLETS = {}
+
+CMD_TO_POD = {}
+
 ALIEN_JELLY = {}
 
 function sbtn(b)
@@ -145,7 +148,7 @@ land_pod = function(pod)
     pod.speed = 0
     pod.spark_idx = 0
     pod.landed = true
-    pod.landed_t = t()
+    pod.landed_t = time()
     Camera.shake()
     sfx(1)
 end
@@ -204,9 +207,6 @@ draw_anti_personnel_turret = function(t)
         spr(17, t._x, t._y, 1, 1, flip)
     end
 end
-
--- todo replace by a player action that creates PODS
-PodFactory.create(30, AntiPersonnelTurretFactory.create)
 
 Tower = {
     _x = 0,
@@ -379,13 +379,31 @@ function damage_enemy(enemy, dmg)
     end
 end
 
-function check_cmds(cmds)
+CMD_TO_POD[{0, 1 , 2, 1}] = AntiPersonnelTurretFactory.create
 
+function check_cmds(cmds)
+    for candidate, factory in pairs(CMD_TO_POD) do
+        local same = true
+        assert(#cmds == #candidate)
+        assert(#cmds == CMDS_MAX)
+        for i=1,#cmds do
+            if candidate[i] ~= cmds[i] then
+                same = false
+                break
+            end
+        end
+
+        if same then
+            PodFactory.create(Player._x, factory)
+            return
+        end
+    end
 end
 
 function update_cmds()
     if btnp(4) then
         IS_IN_CMD_MODE = not IS_IN_CMD_MODE
+        CMDS = {}
     end
 
     if IS_IN_CMD_MODE then
@@ -396,15 +414,17 @@ function update_cmds()
             IS_IN_CMD_MODE = false
         else
             for i=0,5 do
-                if i != 4 and btnp(i) then add(CMDS, i) end
+                if i != 4 and i != 5 and btnp(i) then add(CMDS, i) end
             end
         end
     end
 end
 
 function _update()
-    update_cmds()
     if Tower._hp <= 0 then return end
+
+    update_cmds()
+
     for p in all(PODS) do
         update_pod(p)
     end
