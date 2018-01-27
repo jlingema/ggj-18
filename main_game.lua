@@ -11,10 +11,11 @@ LOCKED_BTN = -1
 CMDS = {}
 CMDS_MAX = 4
 
-WAVE_TIME = 240
+WAVE_TIME = 360
 AP_DMG = 1
 AP_SHOOT_SPEED = 5
 AP_HP = 10
+AP_RANGE=48
 
 PLR_DMG = 2
 PLR_SPEED = 1
@@ -23,6 +24,7 @@ PLR_SHOOT_SPEED = 10 -- larger = slower
 WK_DMG = 2
 WK_HP = 10
 WK_ATK_SPEED = 5
+WK_SPEED = 0.5
 
 PODS = {}
 ANTI_P_TURRETS = {}
@@ -71,6 +73,7 @@ Camera = {
         print('wave:'.. GameState.wv, 90+Camera.x(), 0, 2)
         print('hp:'.. Tower._hp, 90+Camera.x(), 8, 2)
         print('jelly:'.. GameState.jelly, 90+Camera.x(), 16, 11)
+        print('aliens:'.. GameState.enemies, 90+Camera.x(), 24, 3)
         if Tower._hp <= 0 then
             print('game over', 50+Camera.x(), 64, 7)
             return
@@ -90,8 +93,9 @@ Camera = {
 GameState = {
     wv = 0,
     wv_time = WAVE_TIME,
-    cur = WAVE_TIME,
+    cur = 100,
     jelly = 0,
+    enemies=0,
     update = function()
         GameState.cur = GameState.cur - 1
         if GameState.cur <= 0 then
@@ -101,7 +105,9 @@ GameState = {
         end
     end,
     next_wave = function()
-        for i = 1,GameState.wv*2 do
+        local spawn=GameState.wv*2
+        GameState.enemies = GameState.enemies+spawn
+        for i = 1,spawn do
             local x = 100+(rnd(64))
             EnemyFactory.createWeakling(x, GROUND_Y)
         end
@@ -175,7 +181,7 @@ update_anti_personnel_turret = function(t)
     if t.cdwn <= 0 then
         x = t._x
         y = t._y
-        min = 32
+        min = AP_RANGE
         closest = nil
         for e in all(ENEMIES) do
             dx = e._x - t._x
@@ -184,9 +190,9 @@ update_anti_personnel_turret = function(t)
                 closest = e
             end
         end
-        if min < 32 and min > -32 then
+        if abs(min) < AP_RANGE then
             if min < 0 then t.dir = -1 else t.dir = 1 end
-            BulletFactory.create(x,y,AP_DMG,3*t.dir)
+            BulletFactory.create(x+t.dir*3,y+3,AP_DMG,3*t.dir)
             sfx(2)
             t.shooting = true
             t.cdwn = t.speed
@@ -350,9 +356,9 @@ function update_enemy(enemy)
         end
     end
     if min > 0 then
-        enemy._x = enemy._x+1
+        enemy._x = enemy._x+WK_SPEED
     else
-        enemy._x = enemy._x-1
+        enemy._x = enemy._x-WK_SPEED
     end
     if abs(min) < 3 and closest then
         damage_anti_personnel_turret(closest, WK_DMG)
@@ -376,6 +382,7 @@ function damage_enemy(enemy, dmg)
     if enemy._hp <= 0 then
         JellyFactory.create(enemy._x, enemy._y)
         del(ENEMIES, enemy)
+        GameState.enemies = GameState.enemies - 1
     end
 end
 
