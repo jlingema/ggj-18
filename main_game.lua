@@ -37,6 +37,7 @@ ENEMIES = {}
 BULLETS = {}
 
 CMD_TO_POD = {}
+SMOKE = {}
 
 ALIEN_JELLY = {}
 
@@ -56,14 +57,15 @@ Camera = {
     _y=0,
     scr_shk_str = 0,
     update = function()
+        Camera._x = Player._x-64
         if(Camera.scr_shk_str > 0.1) then Camera.scr_shk_str=Camera.scr_shk_str*0.6
         else Camera.scr_shk_str=0 end
         camera(Camera.x(), Camera.y())
     end,
-    move = function(dx,dy)
-        Camera._x = Camera._x + dx
-        Camera._y = Camera._y + dy
-    end,
+    -- move = function(dx,dy)
+    --     Camera._x = Camera._x + dx
+    --     Camera._y = Camera._y + dy
+    -- end,
     shake = function()
         Camera.scr_shk_str = 4
     end,
@@ -117,8 +119,13 @@ GameState = {
         local spawn=GameState.wv*2
         GameState.enemies = GameState.enemies+spawn
         for i = 1,spawn do
-            local x = 100+(rnd(64))
-            EnemyFactory.createWeakling(x, GROUND_Y)
+            if i%2 == 0 then
+                local x = -128-(rnd(32))
+                EnemyFactory.createWeakling(x, GROUND_Y)
+            else
+                local x = 128+(rnd(32))
+                EnemyFactory.createWeakling(x, GROUND_Y)
+            end
         end
     end
 }
@@ -146,7 +153,12 @@ update_pod = function(pod)
 
     if pod.spark_idx >= 0 then pod.spark_idx += 1 end
     if pod.spark_idx == 15 then pod.spark_idx = -1 end
-
+    if not pod.landed then
+        r = rnd(5)
+        if r <= 2 then
+            SmokeFactory.create(pod.x, pod.y)
+        end
+    end
     if pod.landed and (time() - pod.landed_t > 1) then
         pod.spawn_func(pod.x, pod.y)
         del(PODS, pod)
@@ -211,7 +223,10 @@ end
 
 damage_anti_personnel_turret = function(t, dmg)
     t.hp = t.hp - dmg
-    if t.hp <= 0 then del(ANTI_P_TURRETS, t) end
+    if t.hp <= 0 then
+        del(ANTI_P_TURRETS, t)
+        Camera.shake()
+    end
 end
 
 draw_anti_personnel_turret = function(t)
@@ -245,8 +260,34 @@ Tower = {
     end
 }
 
+SmokeFactory = {
+    create = function(x,y)
+        s = {
+            _x=x,
+            _y=y,
+            _c=0
+        }
+        add(SMOKE, s)
+        return s
+    end
+}
+
+update_smoke = function(s)
+    s._y = s._y - rnd(2)
+    s._x = s._x - 2*rnd(2) + 2
+    r = 15+rnd(60)
+    s._c = s._c + 1
+    if r < s._c then
+        del(SMOKE, s)
+    end
+end
+
+draw_smoke = function(s)
+    rectfill(s._x, s._y, s._x+1, s._y+1,6)
+end
+
 Player = {
-    _x = 64,
+    _x = 0,
     _y = 99,
     _w = 2,
     _h = 5,
@@ -318,6 +359,8 @@ BulletFactory = {
 function update_bullet(bullet, enemies)
     pre_x = bullet.x
     bullet.x = bullet.x+bullet.speed
+    bullet.y = bullet.y-1
+    if bullet.y < GROUND_Y then bullet.y = GROUND_Y end
     for e in all (enemies) do
         if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
             damage_enemy(e, bullet.dmg)
@@ -328,7 +371,7 @@ function update_bullet(bullet, enemies)
 end
 
 function draw_bullet(bullet)
-    rectfill(bullet.x, bullet.y, bullet.x+1, bullet.y+1,9)
+    rectfill(bullet.x, bullet.y, bullet.x, bullet.y,9)
 end
 
 EnemyFactory = {
@@ -451,11 +494,9 @@ function _update()
         update_anti_personnel_turret(t)
     end
  if (sbtn(0)) then
-    Camera.move(-1, 0)
     Player.move(-1, 0)
  end
  if (sbtn(1)) then
-    Camera.move(1, 0)
     Player.move(1, 0)
  end
  --if (sbtn(2)) then Camera.move(0, -1) end
@@ -472,6 +513,9 @@ function _update()
  end
  for j in all (ALIEN_JELLY) do
     update_jelly(j)
+ end
+ for s in all (SMOKE) do
+    update_smoke(s)
  end
 end
 
@@ -496,5 +540,8 @@ function _draw()
  end
  for j in all (ALIEN_JELLY) do
     draw_jelly(j)
+ end
+ for s in all (SMOKE) do
+    draw_smoke(s)
  end
 end
