@@ -16,7 +16,7 @@ CMDS_MAX = 4
 TWR_DANGER_ZONE = 300
 TWR_HP = 1000
 
-WAVE_TIME = 360
+BTW_WAVE_TIME = 10 * 30 -- 10 sec at 30 fps
 AP_DMG = 1
 AP_SHOOT_SPEED = 5
 AP_HP = 10
@@ -88,17 +88,16 @@ Camera = {
         for i=1,#CMDS do
             spr(33 + CMDS[i], Camera.x() + 7 * (i + 2), 22)
         end
-        print('wave:'.. GameState.wv, 90+Camera.x(), 0, 2)
-        print('hp:'.. Tower._hp, 90+Camera.x(), 8, 2)
-        print('jelly:'.. GameState.jelly, 90+Camera.x(), 16, 11)
-        print('aliens:'.. GameState.enemies, 90+Camera.x(), 24, 3)
+        local right_offset = 90+Camera.x()
+        print('wave:'.. GameState.wv, right_offset, 0, 2)
+        print('next:'.. ceil(GameState.cur / 30), right_offset, 8, 2)
+        print('hp:'.. Tower._hp, right_offset, 16, 2)
+        print('jelly:'.. GameState.jelly, right_offset, 24, 11)
+        print('aliens:'.. GameState.enemies, right_offset, 32, 3)
         if Tower._hp <= 0 then
             Camera.scr_shk_str=0
             print('game over', 50+Camera.x(), 64, 7)
             return
-        end
-        if GameState.cur < 100 then
-            print(''.. (GameState.cur/10), 64+Camera.x(), 64, 7)
         end
     end,
     x = function()
@@ -111,16 +110,18 @@ Camera = {
 
 GameState = {
     wv = 0,
-    wv_time = WAVE_TIME,
+    wv_time = BTW_WAVE_TIME,
     cur = 100,
     jelly = 0,
     enemies=0,
     update = function()
-        GameState.cur = GameState.cur - 1
-        if GameState.cur <= 0 then
-            GameState.cur = GameState.wv_time
-            GameState.wv = GameState.wv+1
-            GameState.next_wave()
+        if #ENEMIES == 0 then
+            GameState.cur -= 1
+            if GameState.cur <= 0 then
+                GameState.cur = GameState.wv_time
+                GameState.wv = GameState.wv+1
+                GameState.next_wave()
+            end
         end
     end,
     next_wave = function()
@@ -291,7 +292,7 @@ Tower = {
     _blink_t = 30,
     _is_red = false,
     update = function()
-        set_pod_spot_occupied(Tower._x, 8)
+        set_pod_spot_occupied(Tower._x, 10)
         Tower._blink_t -= 1
         if Tower._blink_t <= 0 then
             if not Tower._is_red then
@@ -530,7 +531,7 @@ function is_pod_spot_free(x, size)
     return true
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = {size=4, factory=AntiPersonnelTurretFactory.create}
+CMD_TO_POD[{0, 1 , 2, 1}] = {size=4, price=2, factory=AntiPersonnelTurretFactory.create}
 
 function check_cmds(cmds)
     for candidate, cfg in pairs(CMD_TO_POD) do
@@ -546,12 +547,20 @@ function check_cmds(cmds)
 
         if same then
             -- Check if the spot is free
+            if GameState.jelly < cfg.price then
+                -- error GFX
+                -- error SFX
+                return
+            end
+            
             if not is_pod_spot_free(Player._x, cfg.size) then
+                -- error GFX?
                 -- error SFX
                 return
             end
 
             PodFactory.create(Player._x, cfg.size, cfg.factory)
+            GameState.jelly -= cfg.price
             GFXFactory.create(Tower._x + 5, Tower._y - 8 * Tower._h + 3, 48, 53, 4)
             return
         end
@@ -648,4 +657,25 @@ function _draw()
  for s in all (SMOKE) do
     draw_smoke(s)
  end
+end
+
+-- GGJ 2018 logo by Dylan Bennett https://gist.github.com/MBoffin/0ad8ffc850fb797fe2d90fcc98d81492
+
+function _init()
+    if not DEBUG then
+        show_ggj_logo(34,2.5,10)
+    end
+end
+
+function show_ggj_logo(ggjy,ggjw,ggjs)
+    ggjw=90+ggjw*30*ggjs
+    for i=20-ggjw,110,ggjs do cls(1) clip(i,ggjy,ggjw,62) draw_ggj_logo(ggjy) flip() end
+    cls()
+end
+
+function draw_ggj_logo(ggjy)
+    logo="00000000000000777770000000000000000aaaaa000cc77c7ccccc000000000000aaaaaaaa777cccccccccc0000000000aaa000aaaa77777cccccccc00000000aaa000007aaa7777ccccccccc0000000aa00000777aaa777cccccccc77000000aa000007777aaa7ccccccccc77000000aa0000c77777aaacccccc777ccc00000aaa000c777777aaacccc77777c7000000aaa00cc7777ccaaaccc77777770000000aaaacc777ccccaaacc7777777aaa00000aaacc77ccccccaaacc777777aaaa0000000cc77cccccccaaacc7777700aaa000000cc77ccccccccaaac77777000aa0000000c77cccccccccaaa77770000aa0000000c77ccccccccccaaa777000aaa00000000cc7ccccccccc7aaaa000aaa0000000000cccccccccc777aaaaaaaa000000000000cccccccccc7770aaaaa00000000000000ccccccccccc000000000000000000000000ccccc"
+    for i=1,#logo do if (sub(logo,i,i)!="0") pset(48+((i-1)%32),ggjy+16+flr((i-1)/32),tonum("0x"..sub(logo,i,i))) end
+    for i=-1,1 do for j=-1,1 do print("game born at",40+i,ggjy+1+j,0) print("global game jam",34+i,ggjy+47+j,0) end end
+    print("game born at",40,ggjy+1,13) print("global game jam",34,ggjy+47,7) print("www.globalgamejam.org",22,ggjy+57,13)
 end
