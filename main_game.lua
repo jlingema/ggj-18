@@ -330,9 +330,6 @@ function damage_enemy(enemy, dmg)
     if enemy._hp <= 0 then del(ENEMIES, enemy) end
 end
 
--- todo remove this and have an enemy spawner logic thingy
-EnemyFactory.createWeakling(30, GROUND_Y)
-
 function check_cmds(cmds)
 
 end
