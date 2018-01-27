@@ -42,7 +42,7 @@ PodFactory = {
         p = {
             x = x,
             y = y,
-            speed = 8,
+            speed = 6,
             spark_idx = -1,
             landed = false,
             landed_t,
@@ -55,7 +55,7 @@ PodFactory = {
 
 update_pod = function(pod)
     pod.y = pod.y + pod.speed
-    if pod.y >= 100 and not pod.landed then land_pod(pod) end
+    if pod.y >= 105 and not pod.landed then land_pod(pod) end
 
     if pod.spark_idx >= 0 then pod.spark_idx += 1 end
     if pod.spark_idx == 15 then pod.spark_idx = -1 end
@@ -104,7 +104,7 @@ draw_anti_personnel_turret = function(t)
 end
 
 -- todo replace by a player action that creates pods
-PodFactory.create(64, -100, AntiPersonnelTurretFactory.create)
+PodFactory.create(64, -150, AntiPersonnelTurretFactory.create)
 
 Tower = {
     _x = 0,
