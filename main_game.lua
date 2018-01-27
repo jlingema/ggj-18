@@ -3,6 +3,9 @@ stone_y = 100
 cam_x = 0
 y = 128-32
 
+pods = {}
+anti_p_turrets = {}
+
 Camera = {
     _x=0,
     _y=0,
@@ -33,14 +36,18 @@ Camera = {
 }
 
 PodFactory = {
-    create = function(x, y)
-        return {
+    create = function(x, y, spawn_func)
+        p = {
             x = x,
             y = y,
             speed = 8,
             spark_idx = -1,
-            landed = false
+            landed = false,
+            landed_t,
+            spawn_func = spawn_func
         }
+        add(pods, p)
+        return p
     end
 }
 
@@ -50,6 +57,11 @@ update_pod = function(pod)
 
     if pod.spark_idx >= 0 then pod.spark_idx += 1 end
     if pod.spark_idx == 15 then pod.spark_idx = -1 end
+
+    if pod.landed and (time() - pod.landed_t > 1) then
+        pod.spawn_func(pod.x, pod.y)
+        del(pods, pod)
+    end
 end
 draw_pod = function(pod)
     spr(1, pod.x, pod.y)
@@ -62,8 +74,35 @@ land_pod = function(pod)
     pod.speed = 0
     pod.spark_idx = 0
     pod.landed = true
+    pod.landed_t = t()
+    Camera.shake()
 end
 
+AntiPersonnelTurretFactory = {
+    create = function(x, y)
+        t = {
+            _x = x,
+            _y = y,
+            dir = 1,
+            shooting = false,
+            shooting_spr_idx = 0
+        }
+        add(anti_p_turrets, t)
+        return t
+    end
+}
+
+update_anti_personnel_turret = function(t)
+    print("turret", 0, 32, 1)
+end
+
+draw_anti_personnel_turret = function(t)
+    if t.shooting then t.shooting_spr_idx = (t.shooting_spr_idx+1) % 2 end
+    spr(17+t.shooting_spr_idx, t._x, t._y)
+end
+
+-- todo replace by a player action that creates pods
+add(pods, PodFactory.create(64, -100, AntiPersonnelTurretFactory.create))
 
 Tower = {
     _x = 0,
@@ -128,11 +167,15 @@ function draw_enemy(enemy)
     rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
 
-somepod = PodFactory.create(64, -100)
 anenemy = EnemyFactory.createWeakling(99, 99)
 
 function _update()
-    update_pod(somepod)
+    for p in all(pods) do
+        update_pod(p)
+    end
+    for t in all(anti_p_turrets) do
+        update_anti_personnel_turret(t)
+    end
  if (btn(0)) then
     Camera.move(-1, 0)
     Player.move(-1, 0)
@@ -149,12 +192,17 @@ function _update()
 end
 
 function _draw()
- rectfill(0+Camera.x(),0+Camera.y(),127+Camera.x(),127+Camera.y(),1)
+ cls(1)
  rectfill(0+Camera.x(),99+Camera.y(),127+Camera.x(),127+Camera.y(),2)
  circfill(stone_x%127,stone_y%127,2,4)
  Player.draw()
  Camera.draw()
  Tower.draw()
  draw_enemy(anenemy)
- draw_pod(somepod)
+ for p in all(pods) do
+    draw_pod(p)
+ end
+ for t in all(anti_p_turrets) do
+    draw_anti_personnel_turret(t)
+ end
 end
