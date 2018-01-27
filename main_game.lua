@@ -1,5 +1,5 @@
-plr_x = 64
-plr_y = 100
+stone_x = 64
+stone_y = 100
 cam_x = 0
 y = 128-32
 
@@ -41,7 +41,7 @@ PodFactory = {
 
 update_pod = function(pod)
     pod.y = pod.y + pod.speed
-    if pod.y == 100 and not pod.landed then land_pod(pod) end
+    if pod.y >= 100 and not pod.landed then land_pod(pod) end
 
     if pod.spark_idx >= 0 then pod.spark_idx += 1 end
     if pod.spark_idx == 15 then pod.spark_idx = -1 end
@@ -61,13 +61,35 @@ end
 
 somepod = PodFactory.create(64, -100)
 
+ Player = {
+    _x = 0,
+    _y =99,
+    _w = 2,
+    _h = 5,
+    _o = 64,
+    update = function()
+    end,
+    move = function(dx, dy)
+        Player._x = Player._x + dx
+        Player._y = Player._y + dy
+    end,
+    draw = function()
+        rectfill(Player._x+Player._o,Player._y,Player._x+Player._w+Player._o,Player._y+Player._h,5)
+    end
+}
+
+somepod = PodFactory.create(64, -30)
+
 function _update()
     update_pod(somepod)
-
- dx=0
- dy=0
- if (btn(0)) then Camera.move(-1, 0) end
- if (btn(1)) then Camera.move(1, 0) end
+ if (btn(0)) then
+    Camera.move(-1, 0)
+    Player.move(-1, 0)
+ end
+ if (btn(1)) then
+    Camera.move(1, 0)
+    Player.move(1, 0)
+ end
  --if (btn(2)) then Camera.move(0, -1) end
  --if (btn(3)) then Camera.move(0, 1) end
  if (btn(4)) then Camera.shake() end
@@ -77,9 +99,9 @@ end
 function _draw()
  rectfill(0+Camera.x(),0+Camera.x(),127+Camera.y(),127+Camera.y(),1)
  rectfill(0,99,127,127,2)
- circfill(plr_x%127,plr_y%127,2,4)
+ circfill(stone_x%127,stone_y%127,2,4)
+ Player.draw()
  draw_pod(somepod)
-
  print('mem:'.. stat(0), 0, 0, 7)
  print('cpu:'.. stat(1), 0, 8, 7)
 end
