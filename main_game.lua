@@ -90,12 +90,21 @@ Player = {
     _w = 2,
     _h = 5,
     dir=1,
+    cldn=0,
     update = function()
+        Player.cldn = Player.cldn - 1
+        if Player.cldn < 0 then Player.cldn = 0 end
     end,
     move = function(dx, dy)
         Player._x = Player._x + dx
-        if dx > 0 then dir = 1 else dir = -1 end
+        if dx > 0 then Player.dir = 1 else Player.dir = -1 end
         Player._y = Player._y + dy
+    end,
+    shoot = function()
+        if Player.cldn <= 0 then
+            Player.cldn = 10
+            BulletFactory.create(Player._x, Player._y, 5, Player.dir*5)
+        end
     end,
     draw = function()
         rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
@@ -104,12 +113,14 @@ Player = {
 
 BulletFactory = {
     create = function(x,y,dmg,speed)
-        return {
+        b = {
             speed=speed,
             x=x,
             y=y,
             dmg=dmg
         }
+        add(bullets, b)
+        return b
     end
 }
 
@@ -131,11 +142,13 @@ end
 
 EnemyFactory = {
     createWeakling = function(x,y)
-        return {
+        e = {
             _x = x,
             _y = y,
             _hp = 10
         }
+        add(enemies, e)
+        return e
     end
 }
 
@@ -164,9 +177,11 @@ function damage_enemy(enemy, dmg)
     if enemy._hp <= 0 then del(enemies, enemy) end
 end
 
-somepod = PodFactory.create(64, -100)
-enemies = {EnemyFactory.createWeakling(99, 99)}
 bullets = {}
+enemies = {}
+somepod = PodFactory.create(64, -100)
+EnemyFactory.createWeakling(99, 99)
+
 
 function _update()
     update_pod(somepod)
@@ -181,8 +196,9 @@ function _update()
  --if (btn(2)) then Camera.move(0, -1) end
  --if (btn(3)) then Camera.move(0, 1) end
  if (btn(4)) then Camera.shake() end
- if (btn(5)) then add(bullets, BulletFactory.create(Player._x, Player._y, 5, Player.dir*5)) end
+ if (btn(5)) then Player.shoot() end
  Camera.update()
+ Player.update()
  for e in all (enemies) do
     update_enemy(e)
  end
@@ -190,7 +206,7 @@ end
 
 function _draw()
  rectfill(0+Camera.x(),0+Camera.y(),127+Camera.x(),127+Camera.y(),1)
- rectfill(0+Camera.x(),99+Camera.y(),127+Camera.x(),127+Camera.y(),2)
+ rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),140+Camera.y(),2)
  circfill(stone_x%127,stone_y%127,2,4)
  Player.draw()
  Camera.draw()
