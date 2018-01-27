@@ -2,11 +2,14 @@ stone_x = 64
 stone_y = 100
 cam_x = 0
 y = 128-32
+PODS_ORIG_Y = -200
+PODS_Y_RAND = 50
+GROUND_Y = 100
 
-pods = {}
-anti_p_turrets = {}
-enemies = {}
-bullets = {}
+PODS = {}
+ANTI_P_TURRETS = {}
+ENEMIES = {}
+BULLETS = {}
 
 Camera = {
     _x=0,
@@ -38,38 +41,39 @@ Camera = {
 }
 
 PodFactory = {
-    create = function(x, y, spawn_func)
+    create = function(x, spawn_func)
         p = {
             x = x,
-            y = y,
+            y = PODS_ORIG_Y + rnd(PODS_Y_RAND * 2) - PODS_Y_RAND,
             speed = 6,
             spark_idx = -1,
             landed = false,
             landed_t,
             spawn_func = spawn_func
         }
-        add(pods, p)
+        add(PODS, p)
+        sfx(0)
         return p
     end
 }
 
 update_pod = function(pod)
     pod.y = pod.y + pod.speed
-    if pod.y >= 105 and not pod.landed then land_pod(pod) end
+    if pod.y >= GROUND_Y and not pod.landed then land_pod(pod) end
 
     if pod.spark_idx >= 0 then pod.spark_idx += 1 end
     if pod.spark_idx == 15 then pod.spark_idx = -1 end
 
     if pod.landed and (time() - pod.landed_t > 1) then
         pod.spawn_func(pod.x, pod.y)
-        del(pods, pod)
+        del(PODS, pod)
     end
 end
 draw_pod = function(pod)
     spr(1, pod.x, pod.y)
     if pod.spark_idx > -1 then
         spr(2 + flr(pod.spark_idx / 5), pod.x + 7, pod.y)
-        spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true, false)
+        spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true)
     end
 end
 land_pod = function(pod)
@@ -78,6 +82,7 @@ land_pod = function(pod)
     pod.landed = true
     pod.landed_t = t()
     Camera.shake()
+    sfx(1)
 end
 
 AntiPersonnelTurretFactory = {
@@ -90,7 +95,7 @@ AntiPersonnelTurretFactory = {
             speed = 3,
             shooting = false,
         }
-        add(anti_p_turrets, t)
+        add(ANTI_P_TURRETS, t)
         return t
     end
 }
@@ -103,7 +108,7 @@ update_anti_personnel_turret = function(t)
         y = t._y
         min = 32
         closest = nil
-        for e in all(enemies) do
+        for e in all(ENEMIES) do
             dx = e._x - t._x
             if abs(dx) < abs(min) and dx > -32 then
                 min = dx
@@ -128,12 +133,12 @@ draw_anti_personnel_turret = function(t)
     end
 end
 
--- todo replace by a player action that creates pods
-PodFactory.create(30, -150, AntiPersonnelTurretFactory.create)
+-- todo replace by a player action that creates PODS
+PodFactory.create(30, AntiPersonnelTurretFactory.create)
 
 Tower = {
     _x = 0,
-    _y = 100,
+    _y = GROUND_Y,
     _h = 6,
     _hp = 1000,
     update = function()
@@ -185,7 +190,7 @@ BulletFactory = {
             y=y,
             dmg=dmg
         }
-        add(bullets, b)
+        add(BULLETS, b)
         return b
     end
 }
@@ -213,7 +218,7 @@ EnemyFactory = {
             _y = y,
             _hp = 10
         }
-        add(enemies, e)
+        add(ENEMIES, e)
         return e
     end
 }
@@ -240,17 +245,17 @@ end
 
 function damage_enemy(enemy, dmg)
     enemy._hp = enemy._hp - dmg
-    if enemy._hp <= 0 then del(enemies, enemy) end
+    if enemy._hp <= 0 then del(ENEMIES, enemy) end
 end
 
 -- todo remove this and have an enemy spawner logic thingy
-EnemyFactory.createWeakling(99, 99)
+EnemyFactory.createWeakling(30, GROUND_Y)
 
 function _update()
-    for p in all(pods) do
+    for p in all(PODS) do
         update_pod(p)
     end
-    for t in all(anti_p_turrets) do
+    for t in all(ANTI_P_TURRETS) do
         update_anti_personnel_turret(t)
     end
  if (btn(0)) then
@@ -267,11 +272,11 @@ function _update()
  if (btn(5)) then Player.shoot() end
  Camera.update()
  Player.update()
- for e in all (enemies) do
+ for e in all (ENEMIES) do
     update_enemy(e)
  end
- for b in all (bullets) do
-    if update_bullet(b, enemies) then del(bullets, b) end
+ for b in all (BULLETS) do
+    if update_bullet(b, ENEMIES) then del(BULLETS, b) end
  end
 end
 
@@ -282,16 +287,16 @@ function _draw()
  Player.draw()
  Camera.draw()
  Tower.draw()
- for p in all(pods) do
+ for p in all(PODS) do
     draw_pod(p)
  end
- for t in all(anti_p_turrets) do
+ for t in all(ANTI_P_TURRETS) do
     draw_anti_personnel_turret(t)
  end
- for e in all (enemies) do
+ for e in all (ENEMIES) do
     draw_enemy(e)
  end
- for b in all (bullets) do
+ for b in all (BULLETS) do
     draw_bullet(b)
  end
 end
