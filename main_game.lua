@@ -22,6 +22,7 @@ PLR_SHOOT_SPEED = 10 -- larger = slower
 
 WK_DMG = 2
 WK_HP = 10
+WK_ATK_SPEED = 5
 
 PODS = {}
 ANTI_P_TURRETS = {}
@@ -252,6 +253,7 @@ Player = {
         if Player.cldn <= 0 then
             Player.cldn = PLR_SHOOT_SPEED
             BulletFactory.create(Player._x, Player._y, 5, Player.dir*5)
+            sfx(2)
         end
     end,
     draw = function()
@@ -315,7 +317,8 @@ EnemyFactory = {
         e = {
             _x = x,
             _y = GROUND_Y,
-            _hp = WK_HP
+            _hp = WK_HP,
+            _cdwn = 0
         }
         add(ENEMIES, e)
         return e
@@ -325,8 +328,15 @@ EnemyFactory = {
 function update_enemy(enemy)
     min = Tower._x - enemy._x
     dy = Tower._y - enemy._y
+
+    if enemy._cdwn > 0 then
+        enemy._cdwn = enemy._cdwn - 1
+        return
+    end
+
     if abs(min) < 3 then
         Tower.damage(WK_DMG)
+        enemy._cdwn = WK_ATK_SPEED
         sfx(3)
         return
     end
@@ -345,6 +355,7 @@ function update_enemy(enemy)
     end
     if abs(min) < 3 and closest then
         damage_anti_personnel_turret(closest, WK_DMG)
+        enemy._cdwn = WK_ATK_SPEED
         sfx(3)
     end
     -- if dy > 0 then
