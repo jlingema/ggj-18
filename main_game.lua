@@ -198,7 +198,6 @@ function update_gfx(gfx)
 end
 
 function draw_gfx(gfx)
-    print('gfx: ' .. tostr(gfx.spr_ctr + gfx.spr_start) .. " - " .. tostr(gfx._x) .. " " .. tostr(gfx._y), Camera.x(), 50, 7)
     spr(gfx.spr_start + gfx.spr_ctr, gfx._x, gfx._y)
 end
 
