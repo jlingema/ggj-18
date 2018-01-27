@@ -104,7 +104,7 @@ draw_anti_personnel_turret = function(t)
 end
 
 -- todo replace by a player action that creates pods
-add(pods, PodFactory.create(64, -100, AntiPersonnelTurretFactory.create))
+PodFactory.create(64, -100, AntiPersonnelTurretFactory.create)
 
 Tower = {
     _x = 0,
