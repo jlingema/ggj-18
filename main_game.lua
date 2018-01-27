@@ -35,6 +35,7 @@ PODS = {}
 ANTI_P_TURRETS = {}
 ENEMIES = {}
 BULLETS = {}
+GFXS = {}
 
 CMD_TO_POD = {}
 
@@ -168,6 +169,39 @@ land_pod = function(pod)
     sfx(1)
 end
 
+GFXFactory = {
+    create = function(x, y, spr_start, spr_end, frame_per_spr)
+        gfx = {
+            _x = x,
+            _y = y,
+            spr_start = spr_start,
+            spr_end = spr_end,
+            frame_per_spr = frame_per_spr,
+            frame_ctr = 0,
+            spr_ctr = 0
+        }
+        add(GFXS, gfx)
+        return gfx
+    end
+}
+
+function update_gfx(gfx)
+    gfx.frame_ctr += 1
+    if gfx.frame_ctr == gfx.frame_per_spr then
+        if gfx.spr_ctr == gfx.spr_end - gfx.spr_start then
+            del(GFXS, gfx)
+        else
+            gfx.frame_ctr = 0
+            gfx.spr_ctr += 1
+        end
+    end
+end
+
+function draw_gfx(gfx)
+    print('gfx: ' .. tostr(gfx.spr_ctr + gfx.spr_start) .. " - " .. tostr(gfx._x) .. " " .. tostr(gfx._y), Camera.x(), 50, 7)
+    spr(gfx.spr_start + gfx.spr_ctr, gfx._x, gfx._y)
+end
+
 AntiPersonnelTurretFactory = {
     create = function(x, y)
         t = {
@@ -228,7 +262,19 @@ Tower = {
     _y = GROUND_Y,
     _h = 6,
     _hp = TWR_HP,
+    _blink_t = 30,
+    _is_red = false,
     update = function()
+        Tower._blink_t -= 1
+        if Tower._blink_t <= 0 then
+            if not Tower._is_red then
+                Tower._is_red = true
+                Tower._blink_t = 5
+            else
+                Tower._is_red = false
+                Tower._blink_t = 30
+            end
+        end
     end,
     damage = function(hp)
         if Tower._hp < TWR_DANGER_ZONE then
@@ -241,7 +287,9 @@ Tower = {
         for i=1,Tower._h-2 do
             spr(16, Tower._x, Tower._y - 8 * i)
         end
+        if Tower._is_red then pal(12, 1) end
         spr(0, Tower._x, Tower._y - 8 * (Tower._h - 1))
+        pal()
     end
 }
 
@@ -414,6 +462,7 @@ function check_cmds(cmds)
 
         if same then
             PodFactory.create(Player._x, factory)
+            GFXFactory.create(Tower._x + 5, Tower._y + 8 * Tower._h, 48, 53, 4)
             return
         end
     end
@@ -444,6 +493,9 @@ function _update()
 
     update_cmds()
 
+    for gfx in all(GFXS) do
+        update_gfx(gfx)
+    end
     for p in all(PODS) do
         update_pod(p)
     end
@@ -461,6 +513,7 @@ function _update()
  --if (sbtn(2)) then Camera.move(0, -1) end
  --if (sbtn(3)) then Camera.move(0, 1) end
  if (sbtn(5)) then Player.shoot() end
+ Tower.update()
  Camera.update()
  Player.update()
  GameState.update()
@@ -482,6 +535,10 @@ function _draw()
  Player.draw()
  Camera.draw()
  Tower.draw()
+
+ for gfx in all(GFXS) do
+    draw_gfx(gfx)
+ end
  for p in all(PODS) do
     draw_pod(p)
  end
