@@ -226,12 +226,12 @@ function update_enemy(enemy)
     else
         enemy._x = enemy._x-1
     end
-    if dy > 0 then
-        enemy._y = enemy._y+1
-    else
-        enemy._y = enemy._y-1
-    end
-    if abs(dx) < 3 and abs(dy) < 3 then Tower.damage(1) end
+    -- if dy > 0 then
+    --     enemy._y = enemy._y+1
+    -- else
+    --     enemy._y = enemy._y-1
+    -- end
+    if abs(dx) < 3 then Tower.damage(1) end
 end
 
 function draw_enemy(enemy)
