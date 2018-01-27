@@ -2,7 +2,8 @@ stone_x = 64
 stone_y = 100
 cam_x = 0
 y = 128-32
-
+PODS_ORIG_Y = -150
+PODS_Y_RAND = 20
 pods = {}
 anti_p_turrets = {}
 enemies = {}
@@ -38,10 +39,10 @@ Camera = {
 }
 
 PodFactory = {
-    create = function(x, y, spawn_func)
+    create = function(x, spawn_func)
         p = {
             x = x,
-            y = y,
+            y = PODS_ORIG_Y + rnd(PODS_Y_RAND * 2) - PODS_Y_RAND,
             speed = 6,
             spark_idx = -1,
             landed = false,
@@ -49,6 +50,7 @@ PodFactory = {
             spawn_func = spawn_func
         }
         add(pods, p)
+        sfx(0)
         return p
     end
 }
@@ -69,7 +71,7 @@ draw_pod = function(pod)
     spr(1, pod.x, pod.y)
     if pod.spark_idx > -1 then
         spr(2 + flr(pod.spark_idx / 5), pod.x + 7, pod.y)
-        spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true, false)
+        spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true)
     end
 end
 land_pod = function(pod)
@@ -78,6 +80,7 @@ land_pod = function(pod)
     pod.landed = true
     pod.landed_t = t()
     Camera.shake()
+    sfx(1)
 end
 
 AntiPersonnelTurretFactory = {
@@ -104,7 +107,7 @@ draw_anti_personnel_turret = function(t)
 end
 
 -- todo replace by a player action that creates pods
-PodFactory.create(64, -150, AntiPersonnelTurretFactory.create)
+PodFactory.create(64, AntiPersonnelTurretFactory.create)
 
 Tower = {
     _x = 0,
