@@ -373,8 +373,10 @@ function update_cmds()
 end
 
 function _update()
-    update_cmds()
     if Tower._hp <= 0 then return end
+
+    update_cmds()
+
     for p in all(PODS) do
         update_pod(p)
     end
