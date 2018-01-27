@@ -361,6 +361,7 @@ Player = {
     dir=1,
     cldn=0,
     moving=false,
+    _hp=100,
     update = function()
         if moving then
             Player._frame_ctr += 1
@@ -405,6 +406,9 @@ Player = {
         spr(25+Player._spr_idx, Player._x, Player._y, 1, 1, flip)
         -- rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
     end,
+    damage = function(dmg)
+        Player._hp = Player._hp - dmg
+    end
 }
 
 JellyFactory = {
@@ -500,6 +504,13 @@ function update_enemy(enemy)
             closest = t
             min = dx
         end
+    end
+    dx = Player._x - enemy._x
+    if abs(dx) < abs(min) then
+        closest = Player
+        min = dx
+        closest.damage(WK_DMG)
+        closest = nil
     end
     if min > 0 then
         enemy._x = enemy._x+WK_SPEED
