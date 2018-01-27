@@ -6,10 +6,26 @@ PODS_ORIG_Y = -200
 PODS_Y_RAND = 50
 GROUND_Y = 100
 
+IS_IN_CMD_MODE = false
+LOCKED_BTN = -1
+CMDS = {}
+CMDS_MAX = 6
+
 PODS = {}
 ANTI_P_TURRETS = {}
 ENEMIES = {}
 BULLETS = {}
+
+function sbtn(b)
+    if LOCKED_BTN == b then
+        -- A locked button is unlocked once unpressed. This is for preventing
+        -- a button to be considered pressed after it was used as the last button of a
+        -- pod command list.
+        if not btn(b) then LOCKED_BTN = -1 end
+        return false
+    end
+    return not IS_IN_CMD_MODE and btn(b)
+end
 
 Camera = {
     _x=0,
@@ -31,6 +47,11 @@ Camera = {
         print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
         print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
         print('hp:'.. Tower._hp, 100+Camera.x(), 8, 2)
+        print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
+        print("cmds: ", Camera.x(), 24, 7)
+        for i=1,#CMDS do
+            print(tostr(CMDS[i]), Camera.x() + 7 * (i + 2), 24, 7)
+        end
     end,
     x = function()
         return Camera._x + (rnd (Camera.scr_shk_str*2)) - Camera.scr_shk_str
@@ -251,25 +272,48 @@ end
 -- todo remove this and have an enemy spawner logic thingy
 EnemyFactory.createWeakling(30, GROUND_Y)
 
+function check_cmds(cmds)
+
+end
+
+function update_cmds()
+    if btnp(4) then
+        IS_IN_CMD_MODE = not IS_IN_CMD_MODE
+    end
+
+    if IS_IN_CMD_MODE then
+        if #CMDS == CMDS_MAX then
+            check_cmds(CMDS)
+            LOCKED_BTN = CMDS[#CMDS]
+            CMDS = {}
+            IS_IN_CMD_MODE = false
+        else
+            for i=0,5 do
+                if i != 4 and btnp(i) then add(CMDS, i) end
+            end
+        end
+    end
+end
+
 function _update()
+    update_cmds()
     for p in all(PODS) do
         update_pod(p)
     end
     for t in all(ANTI_P_TURRETS) do
         update_anti_personnel_turret(t)
     end
- if (btn(0)) then
+ if (sbtn(0)) then
     Camera.move(-1, 0)
     Player.move(-1, 0)
  end
- if (btn(1)) then
+ if (sbtn(1)) then
     Camera.move(1, 0)
     Player.move(1, 0)
  end
- --if (btn(2)) then Camera.move(0, -1) end
- --if (btn(3)) then Camera.move(0, 1) end
- if (btn(4)) then Camera.shake() end
- if (btn(5)) then Player.shoot() end
+ --if (sbtn(2)) then Camera.move(0, -1) end
+ --if (sbtn(3)) then Camera.move(0, 1) end
+ if (sbtn(5)) then Player.shoot() end
  Camera.update()
  Player.update()
  for e in all (ENEMIES) do
