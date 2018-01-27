@@ -462,7 +462,7 @@ function check_cmds(cmds)
 
         if same then
             PodFactory.create(Player._x, factory)
-            GFXFactory.create(Tower._x + 5, Tower._y + 8 * Tower._h, 48, 53, 4)
+            GFXFactory.create(Tower._x + 6, Tower._y - 8 * Tower._h + 4, 48, 53, 4)
             return
         end
     end
