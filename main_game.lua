@@ -37,13 +37,34 @@ PodFactory = {
         return {
             x = x,
             y = y,
-
-            draw = function()
-                spr(1, x, y)
-            end
+            speed = 8,
+            spark_idx = -1,
+            landed = false
         }
     end
 }
+
+update_pod = function(pod)
+    pod.y = pod.y + pod.speed
+    if pod.y >= 100 and not pod.landed then land_pod(pod) end
+
+    if pod.spark_idx >= 0 then pod.spark_idx += 1 end
+    if pod.spark_idx == 15 then pod.spark_idx = -1 end
+end
+draw_pod = function(pod)
+    spr(1, pod.x, pod.y)
+    if pod.spark_idx > -1 then
+        spr(2 + flr(pod.spark_idx / 5), pod.x + 7, pod.y)
+        spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true, false)
+    end
+end
+land_pod = function(pod)
+    pod.speed = 0
+    pod.spark_idx = 0
+    pod.landed = true
+end
+
+
 Tower = {
     _x = 0,
     _y = 99,
@@ -103,10 +124,11 @@ function draw_enemy(enemy)
     rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
 
-somepod = PodFactory.create(64, 64)
+somepod = PodFactory.create(64, -100)
 anenemy = EnemyFactory.createWeakling(99, 99)
 
 function _update()
+    update_pod(somepod)
  if (btn(0)) then
     Camera.move(-1, 0)
     Player.move(-1, 0)
@@ -127,9 +149,8 @@ function _draw()
  rectfill(0+Camera.x(),99+Camera.y(),127+Camera.x(),127+Camera.y(),2)
  circfill(stone_x%127,stone_y%127,2,4)
  Player.draw()
- somepod.draw()
  Camera.draw()
  Tower.draw()
  draw_enemy(anenemy)
-
+ draw_pod(somepod)
 end
