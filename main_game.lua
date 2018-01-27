@@ -32,6 +32,7 @@ WK_ATK_SPEED = 5
 WK_SPEED = 0.5
 
 PODS = {}
+POD_SPOT = {}
 ANTI_P_TURRETS = {}
 ENEMIES = {}
 BULLETS = {}
@@ -75,6 +76,12 @@ Camera = {
             print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
             print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
             print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
+            print('spots: ', Camera.x(), 35, 7)
+            local i = 1
+            for k, v in pairs(POD_SPOT) do
+                print(tostr(k), Camera.x() + 8 * (i + 1) + 15, 35, 7)
+                i += 1
+            end
         end
 
         print("cmds: ", Camera.x(), 24, 7)
@@ -132,10 +139,11 @@ GameState = {
 }
 
 PodFactory = {
-    create = function(x, spawn_func)
+    create = function(x, size, spawn_func)
         p = {
             x = x,
             y = PODS_ORIG_Y + rnd(PODS_Y_RAND * 2) - PODS_Y_RAND,
+            obj_size = size,
             speed = 6,
             spark_idx = -1,
             landed = false,
@@ -143,6 +151,7 @@ PodFactory = {
             spawn_func = spawn_func
         }
         add(PODS, p)
+        set_pod_spot_occupied(x, size)
         sfx(0)
         return p
     end
@@ -161,7 +170,7 @@ update_pod = function(pod)
         end
     end
     if pod.landed and (time() - pod.landed_t > 1) then
-        pod.spawn_func(pod.x, pod.y)
+        pod.spawn_func(pod.x, pod.y, pod.obj_size)
         del(PODS, pod)
     end
 end
@@ -214,10 +223,11 @@ function draw_gfx(gfx)
 end
 
 AntiPersonnelTurretFactory = {
-    create = function(x, y)
+    create = function(x, y, size)
         t = {
             _x = x,
             _y = y,
+            size = size,
             dir = 1,
             cdwn = 0,
             speed = AP_SHOOT_SPEED,
@@ -259,6 +269,7 @@ damage_anti_personnel_turret = function(t, dmg)
     SmokeFactory.create(t._x, t._y, 9)
     if t.hp <= 0 then
         del(ANTI_P_TURRETS, t)
+        set_pod_spot_free(t._x, t.size)
         Camera.shake()
     end
 end
@@ -280,6 +291,7 @@ Tower = {
     _blink_t = 30,
     _is_red = false,
     update = function()
+        set_pod_spot_occupied(Tower._x, 8)
         Tower._blink_t -= 1
         if Tower._blink_t <= 0 then
             if not Tower._is_red then
@@ -491,10 +503,35 @@ function damage_enemy(enemy, dmg)
     end
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = AntiPersonnelTurretFactory.create
+-- Where pods come to existence!
+
+function set_pod_spot_free(x, size)
+    local s2 = ceil(size / 2)
+    for i=-s2,s2 do
+        POD_SPOT[x+i] = nil
+    end
+end
+
+function set_pod_spot_occupied(x, size)
+    local s2 = ceil(size / 2)
+    for i=-s2,s2 do
+        POD_SPOT[x+i] = true
+    end
+end
+
+function is_pod_spot_free(x, size)
+    local s2 = ceil(size / 2)
+    for i=-s2,s2 do
+        if POD_SPOT[x+i] then return false end
+    end
+
+    return true
+end
+
+CMD_TO_POD[{0, 1 , 2, 1}] = {size=4, factory=AntiPersonnelTurretFactory.create}
 
 function check_cmds(cmds)
-    for candidate, factory in pairs(CMD_TO_POD) do
+    for candidate, cfg in pairs(CMD_TO_POD) do
         local same = true
         assert(#cmds == #candidate)
         assert(#cmds == CMDS_MAX)
@@ -506,7 +543,13 @@ function check_cmds(cmds)
         end
 
         if same then
-            PodFactory.create(Player._x, factory)
+            -- Check if the spot is free
+            if not is_pod_spot_free(Player._x, cfg.size) then
+                -- error SFX
+                return
+            end
+
+            PodFactory.create(Player._x, cfg.size, cfg.factory)
             GFXFactory.create(Tower._x + 6, Tower._y - 8 * Tower._h + 4, 48, 53, 4)
             return
         end
