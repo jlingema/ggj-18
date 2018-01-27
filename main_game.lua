@@ -32,17 +32,38 @@ PodFactory = {
         return {
             x = x,
             y = y,
-
-            draw = function()
-                spr(1, x, y)
-            end
+            speed = 8,
+            spark_idx = -1,
+            landed = false
         }
     end
 }
 
-somepod = PodFactory.create(64, 64)
+update_pod = function(pod)
+    pod.y = pod.y + pod.speed
+    if pod.y == 100 and not pod.landed then land_pod(pod) end
+
+    if pod.spark_idx >= 0 then pod.spark_idx += 1 end
+    if pod.spark_idx == 15 then pod.spark_idx = -1 end
+end
+draw_pod = function(pod)
+    spr(1, pod.x, pod.y)
+    if pod.spark_idx > -1 then
+        spr(2 + flr(pod.spark_idx / 5), pod.x + 7, pod.y)
+        spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true, false)
+    end
+end
+land_pod = function(pod)
+    pod.speed = 0
+    pod.spark_idx = 0
+    pod.landed = true
+end
+
+somepod = PodFactory.create(64, -100)
 
 function _update()
+    update_pod(somepod)
+
  dx=0
  dy=0
  if (btn(0)) then Camera.move(-1, 0) end
@@ -57,7 +78,7 @@ function _draw()
  rectfill(0+Camera.x(),0+Camera.x(),127+Camera.y(),127+Camera.y(),1)
  rectfill(0,99,127,127,2)
  circfill(plr_x%127,plr_y%127,2,4)
- somepod.draw()
+ draw_pod(somepod)
 
  print('mem:'.. stat(0), 0, 0, 7)
  print('cpu:'.. stat(1), 0, 8, 7)
