@@ -2,12 +2,14 @@ stone_x = 64
 stone_y = 100
 cam_x = 0
 y = 128-32
-PODS_ORIG_Y = -150
-PODS_Y_RAND = 20
-pods = {}
-anti_p_turrets = {}
-enemies = {}
-bullets = {}
+PODS_ORIG_Y = -200
+PODS_Y_RAND = 50
+GROUND_Y = 100
+
+PODS = {}
+ANTI_P_TURRETS = {}
+ENEMIES = {}
+BULLETS = {}
 
 Camera = {
     _x=0,
@@ -49,7 +51,7 @@ PodFactory = {
             landed_t,
             spawn_func = spawn_func
         }
-        add(pods, p)
+        add(PODS, p)
         sfx(0)
         return p
     end
@@ -57,14 +59,14 @@ PodFactory = {
 
 update_pod = function(pod)
     pod.y = pod.y + pod.speed
-    if pod.y >= 105 and not pod.landed then land_pod(pod) end
+    if pod.y >= GROUND_Y and not pod.landed then land_pod(pod) end
 
     if pod.spark_idx >= 0 then pod.spark_idx += 1 end
     if pod.spark_idx == 15 then pod.spark_idx = -1 end
 
     if pod.landed and (time() - pod.landed_t > 1) then
         pod.spawn_func(pod.x, pod.y)
-        del(pods, pod)
+        del(PODS, pod)
     end
 end
 draw_pod = function(pod)
@@ -89,29 +91,54 @@ AntiPersonnelTurretFactory = {
             _x = x,
             _y = y,
             dir = 1,
+            cdwn = 0,
+            speed = 3,
             shooting = false,
-            shooting_spr_idx = 0
         }
-        add(anti_p_turrets, t)
+        add(ANTI_P_TURRETS, t)
         return t
     end
 }
 
 update_anti_personnel_turret = function(t)
-    print("turret", 0, 32, 1)
+    t.cdwn = t.cdwn - 1
+    t.shooting=false
+    if t.cdwn <= 0 then
+        x = t._x
+        y = t._y
+        min = 32
+        closest = nil
+        for e in all(ENEMIES) do
+            dx = e._x - t._x
+            if abs(dx) < abs(min) and dx > -32 then
+                min = dx
+                closest = e
+            end
+        end
+        if min < 32 and min > -32 then
+            if min < 0 then t.dir = -1 else t.dir = 1 end
+            BulletFactory.create(x,y,5,3*t.dir)
+            t.shooting = true
+            t.cdwn = t.speed
+        end
+    end
 end
 
 draw_anti_personnel_turret = function(t)
-    if t.shooting then t.shooting_spr_idx = (t.shooting_spr_idx+1) % 2 end
-    spr(17+t.shooting_spr_idx, t._x, t._y)
+    local flip = t.dir < 0
+    if t.shooting then
+        spr(18, t._x, t._y, 1, 1, flip)
+    else
+        spr(17, t._x, t._y, 1, 1, flip)
+    end
 end
 
--- todo replace by a player action that creates pods
-PodFactory.create(64, AntiPersonnelTurretFactory.create)
+-- todo replace by a player action that creates PODS
+PodFactory.create(30, AntiPersonnelTurretFactory.create)
 
 Tower = {
     _x = 0,
-    _y = 100,
+    _y = GROUND_Y,
     _h = 6,
     _hp = 1000,
     update = function()
@@ -134,12 +161,21 @@ Player = {
     _w = 2,
     _h = 5,
     dir=1,
+    cldn=0,
     update = function()
+        Player.cldn = Player.cldn - 1
+        if Player.cldn < 0 then Player.cldn = 0 end
     end,
     move = function(dx, dy)
         Player._x = Player._x + dx
-        if dx > 0 then dir = 1 else dir = -1 end
+        if dx > 0 then Player.dir = 1 else Player.dir = -1 end
         Player._y = Player._y + dy
+    end,
+    shoot = function()
+        if Player.cldn <= 0 then
+            Player.cldn = 10
+            BulletFactory.create(Player._x, Player._y, 5, Player.dir*5)
+        end
     end,
     draw = function()
         rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
@@ -148,12 +184,14 @@ Player = {
 
 BulletFactory = {
     create = function(x,y,dmg,speed)
-        return {
+        b = {
             speed=speed,
             x=x,
             y=y,
             dmg=dmg
         }
+        add(BULLETS, b)
+        return b
     end
 }
 
@@ -161,7 +199,7 @@ function update_bullet(bullet, enemies)
     pre_x = bullet.x
     bullet.x = bullet.x+bullet.speed
     for e in all (enemies) do
-        if e._x > pre_x and e._x < bullet.x then
+        if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
             damage_enemy(e, bullet.dmg)
             return true
         end
@@ -170,16 +208,18 @@ function update_bullet(bullet, enemies)
 end
 
 function draw_bullet(bullet)
-    rectfill(bullet.x, bullet.y, bullet.x+1, bullet.y+1,5)
+    rectfill(bullet.x, bullet.y, bullet.x+1, bullet.y+1,9)
 end
 
 EnemyFactory = {
     createWeakling = function(x,y)
-        return {
+        e = {
             _x = x,
             _y = y,
             _hp = 10
         }
+        add(ENEMIES, e)
+        return e
     end
 }
 
@@ -205,17 +245,17 @@ end
 
 function damage_enemy(enemy, dmg)
     enemy._hp = enemy._hp - dmg
-    if enemy._hp <= 0 then del(enemies, enemy) end
+    if enemy._hp <= 0 then del(ENEMIES, enemy) end
 end
 
 -- todo remove this and have an enemy spawner logic thingy
-EnemyFactory.createWeakling(99, 99)
+EnemyFactory.createWeakling(30, GROUND_Y)
 
 function _update()
-    for p in all(pods) do
+    for p in all(PODS) do
         update_pod(p)
     end
-    for t in all(anti_p_turrets) do
+    for t in all(ANTI_P_TURRETS) do
         update_anti_personnel_turret(t)
     end
  if (btn(0)) then
@@ -229,31 +269,34 @@ function _update()
  --if (btn(2)) then Camera.move(0, -1) end
  --if (btn(3)) then Camera.move(0, 1) end
  if (btn(4)) then Camera.shake() end
- if (btn(5)) then add(bullets, BulletFactory.create(Player._x, Player._y, 5, Player.dir*5)) end
+ if (btn(5)) then Player.shoot() end
  Camera.update()
- for e in all (enemies) do
+ Player.update()
+ for e in all (ENEMIES) do
     update_enemy(e)
+ end
+ for b in all (BULLETS) do
+    if update_bullet(b, ENEMIES) then del(BULLETS, b) end
  end
 end
 
 function _draw()
  cls(1)
- rectfill(0+Camera.x(),99+Camera.y(),127+Camera.x(),127+Camera.y(),2)
+ rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),2)
  circfill(stone_x%127,stone_y%127,2,4)
  Player.draw()
  Camera.draw()
  Tower.draw()
- for p in all(pods) do
+ for p in all(PODS) do
     draw_pod(p)
  end
- for t in all(anti_p_turrets) do
+ for t in all(ANTI_P_TURRETS) do
     draw_anti_personnel_turret(t)
  end
- for e in all (enemies) do
+ for e in all (ENEMIES) do
     draw_enemy(e)
  end
- for b in all (bullets) do
+ for b in all (BULLETS) do
     draw_bullet(b)
-    if update_bullet(b, enemies) then del(bullets, b) end
  end
 end
