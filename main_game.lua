@@ -86,8 +86,9 @@ AntiPersonnelTurretFactory = {
             _x = x,
             _y = y,
             dir = 1,
+            cdwn = 0,
+            speed = 3,
             shooting = false,
-            shooting_spr_idx = 0
         }
         add(anti_p_turrets, t)
         return t
@@ -95,16 +96,40 @@ AntiPersonnelTurretFactory = {
 }
 
 update_anti_personnel_turret = function(t)
-    print("turret", 0, 32, 1)
+    t.cdwn = t.cdwn - 1
+    t.shooting=false
+    if t.cdwn <= 0 then
+        x = t._x
+        y = t._y
+        min = 32
+        closest = nil
+        for e in all(enemies) do
+            dx = e._x - t._x
+            if abs(dx) < abs(min) and dx > -32 then
+                min = dx
+                closest = e
+            end
+        end
+        if min < 32 and min > -32 then
+            if min < 0 then t.dir = -1 else t.dir = 1 end
+            BulletFactory.create(x,y,5,3*t.dir)
+            t.shooting = true
+            t.cdwn = t.speed
+        end
+    end
 end
 
 draw_anti_personnel_turret = function(t)
-    if t.shooting then t.shooting_spr_idx = (t.shooting_spr_idx+1) % 2 end
-    spr(17+t.shooting_spr_idx, t._x, t._y)
+    local flip = t.dir < 0
+    if t.shooting then
+        spr(18, t._x, t._y, 1, 1, flip)
+    else
+        spr(17, t._x, t._y, 1, 1, flip)
+    end
 end
 
 -- todo replace by a player action that creates pods
-PodFactory.create(64, -150, AntiPersonnelTurretFactory.create)
+PodFactory.create(30, -150, AntiPersonnelTurretFactory.create)
 
 Tower = {
     _x = 0,
@@ -169,7 +194,7 @@ function update_bullet(bullet, enemies)
     pre_x = bullet.x
     bullet.x = bullet.x+bullet.speed
     for e in all (enemies) do
-        if e._x > pre_x and e._x < bullet.x then
+        if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
             damage_enemy(e, bullet.dmg)
             return true
         end
@@ -178,7 +203,7 @@ function update_bullet(bullet, enemies)
 end
 
 function draw_bullet(bullet)
-    rectfill(bullet.x, bullet.y, bullet.x+1, bullet.y+1,5)
+    rectfill(bullet.x, bullet.y, bullet.x+1, bullet.y+1,9)
 end
 
 EnemyFactory = {
@@ -245,6 +270,9 @@ function _update()
  for e in all (enemies) do
     update_enemy(e)
  end
+ for b in all (bullets) do
+    if update_bullet(b, enemies) then del(bullets, b) end
+ end
 end
 
 function _draw()
@@ -265,6 +293,5 @@ function _draw()
  end
  for b in all (bullets) do
     draw_bullet(b)
-    if update_bullet(b, enemies) then del(bullets, b) end
  end
 end
