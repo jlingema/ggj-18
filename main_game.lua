@@ -1,3 +1,5 @@
+DEBUG = true
+
 stone_x = 64
 stone_y = 100
 cam_x = 0
@@ -61,12 +63,15 @@ Camera = {
         Camera.scr_shk_str = 4
     end,
     draw = function()
-        print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
-        print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
-        print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
+        if DEBUG then
+            print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
+            print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
+            print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
+        end
+
         print("cmds: ", Camera.x(), 24, 7)
         for i=1,#CMDS do
-            print(tostr(CMDS[i]), Camera.x() + 7 * (i + 2), 24, 7)
+            spr(33 + CMDS[i], Camera.x() + 7 * (i + 2), 22)
         end
         print('wave:'.. GameState.wv, 90+Camera.x(), 0, 2)
         print('hp:'.. Tower._hp, 90+Camera.x(), 8, 2)
