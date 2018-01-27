@@ -1,4 +1,5 @@
 DEBUG = true
+DEBUG_JELLY = 20
 
 stone_x = 64
 stone_y = 100
@@ -15,6 +16,8 @@ CMDS_MAX = 4
 
 TWR_DANGER_ZONE = 300
 TWR_HP = 1000
+
+WALL_HP = 250
 
 BTW_WAVE_TIME = 10 * 30 -- 10 sec at 30 fps
 AP_DMG = 1
@@ -33,6 +36,7 @@ WK_SPEED = 0.5
 
 PODS = {}
 POD_SPOT = {}
+WALLS = {}
 ANTI_P_TURRETS = {}
 ENEMIES = {}
 BULLETS = {}
@@ -139,6 +143,10 @@ GameState = {
     end
 }
 
+if DEBUG then
+    GameState.jelly = DEBUG_JELLY
+end
+
 PodFactory = {
     create = function(x, size, spawn_func)
         p = {
@@ -223,6 +231,30 @@ function draw_gfx(gfx)
     spr(gfx.spr_start + gfx.spr_ctr, gfx._x, gfx._y)
 end
 
+WallFactory = {
+    create = function(x, y, size)
+        w = {
+            _x = x,
+            _y = y,
+            size = size,
+            dir = 1,
+            hp = WALL_HP,
+            _table = WALLS
+        }
+        if Tower._x > x then w.dir = -1 end
+        add(WALLS, w)
+        return w
+    end
+}
+
+function update_wall(w)
+end
+
+function draw_wall(w)
+    -- todo draw HP using the health bar function
+    spr(19, w._x, w._y, 1, 1, w.dir < 0)
+end
+
 AntiPersonnelTurretFactory = {
     create = function(x, y, size)
         t = {
@@ -234,6 +266,7 @@ AntiPersonnelTurretFactory = {
             speed = AP_SHOOT_SPEED,
             hp = AP_HP,
             shooting = false,
+            _table = ANTI_P_TURRETS
         }
         add(ANTI_P_TURRETS, t)
         return t
@@ -265,22 +298,24 @@ update_anti_personnel_turret = function(t)
     end
 end
 
-damage_anti_personnel_turret = function(t, dmg)
-    t.hp = t.hp - dmg
-    SmokeFactory.create(t._x, t._y, 9)
-    if t.hp <= 0 then
-        del(ANTI_P_TURRETS, t)
-        set_pod_spot_free(t._x, t.size)
-        Camera.shake()
-    end
-end
-
 draw_anti_personnel_turret = function(t)
     local flip = t.dir < 0
     if t.shooting then
         spr(18, t._x, t._y, 1, 1, flip)
     else
         spr(17, t._x, t._y, 1, 1, flip)
+    end
+end
+
+-- Damage for different entities that have similarely built tables (_x, _y, _table, ...)
+
+damage = function(e, dmg)
+    e.hp = e.hp - dmg
+    SmokeFactory.create(e._x, e._y, 9)
+    if e.hp <= 0 then
+        del(e._table, e)
+        set_pod_spot_free(e._x, e.size)
+        Camera.shake()
     end
 end
 
@@ -452,45 +487,58 @@ EnemyFactory = {
     end
 }
 
-function update_enemy(enemy)
-    min = Tower._x - enemy._x
-    dy = Tower._y - enemy._y
+function _find_closest(t, from_x, current_closest)
+    min_dist = 9999 -- outch
+    if current_closest != nil then min_dist = current_closest._x - from_x end
+    for e in all(t) do
+        dx = e._x - from_x
+        if abs(dx) < abs(min_dist) then
+            min_dist = dx
+            current_closest = e
+        end
+    end
+    return {dist=min_dist, entity=current_closest}
+end
 
+function update_enemy(enemy)
     if enemy._cdwn > 0 then
         enemy._cdwn = enemy._cdwn - 1
         return
     end
 
-    if abs(min) < 3 then
-        Tower.damage(WK_DMG)
-        enemy._cdwn = WK_ATK_SPEED
-        sfx(3)
-        return
-    end
-    closest = nil
-    for t in all(ANTI_P_TURRETS) do
-        dx = t._x - enemy._x
-        if abs(dx) < abs(min) then
-            closest = t
-            min = dx
+    result = _find_closest(ANTI_P_TURRETS, enemy._x, nil)
+    -- result = _find_closest(WALLS, enemy._x, result.entity)
+
+    tower_dist = Tower._x - enemy._x
+    if abs(tower_dist) <= abs(result.dist) then result.entity = nil end
+
+    if result.entity != nil then
+        -- Entity closer than tower
+        if result.dist > 0 then
+            enemy._x = enemy._x+WK_SPEED
+        else
+            enemy._x = enemy._x-WK_SPEED
+        end
+        if abs(result.dist) < 3 then
+            damage(result.entity, WK_DMG)
+            enemy._cdwn = WK_ATK_SPEED
+            sfx(3)
+        end
+    else
+        -- walk torwards tower
+        if tower_dist > 0 then
+            enemy._x = enemy._x+WK_SPEED
+        else
+            enemy._x = enemy._x-WK_SPEED
+        end
+
+        if abs(tower_dist) < 3 then
+            Tower.damage(WK_DMG)
+            enemy._cdwn = WK_ATK_SPEED
+            sfx(3)
+            return
         end
     end
-    if min > 0 then
-        enemy._x = enemy._x+WK_SPEED
-    else
-        enemy._x = enemy._x-WK_SPEED
-    end
-    if abs(min) < 3 and closest then
-        damage_anti_personnel_turret(closest, WK_DMG)
-        enemy._cdwn = WK_ATK_SPEED
-        sfx(3)
-    end
-    -- if dy > 0 then
-    --     enemy._y = enemy._y+1
-    -- else
-    --     enemy._y = enemy._y-1
-    -- end
-
 end
 
 function draw_enemy(enemy)
@@ -532,6 +580,7 @@ function is_pod_spot_free(x, size)
 end
 
 CMD_TO_POD[{0, 1 , 2, 1}] = {size=4, price=2, factory=AntiPersonnelTurretFactory.create}
+CMD_TO_POD[{0, 3, 2, 3}] = {size=4, price=6, factory=WallFactory.create}
 
 function check_cmds(cmds)
     for candidate, cfg in pairs(CMD_TO_POD) do
@@ -598,6 +647,9 @@ function _update()
     for p in all(PODS) do
         update_pod(p)
     end
+    for w in all(WALLS) do
+        update_wall(wall)
+    end
     for t in all(ANTI_P_TURRETS) do
         update_anti_personnel_turret(t)
     end
@@ -641,6 +693,9 @@ function _draw()
  end
  for p in all(PODS) do
     draw_pod(p)
+ end
+ for w in all(WALLS) do
+    draw_wall(w)
  end
  for t in all(ANTI_P_TURRETS) do
     draw_anti_personnel_turret(t)
