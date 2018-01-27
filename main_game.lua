@@ -11,6 +11,9 @@ LOCKED_BTN = -1
 CMDS = {}
 CMDS_MAX = 4
 
+TWR_DANGER_ZONE = 300
+TWR_HP = 1000
+
 WAVE_TIME = 360
 AP_DMG = 1
 AP_SHOOT_SPEED = 5
@@ -75,6 +78,7 @@ Camera = {
         print('jelly:'.. GameState.jelly, 90+Camera.x(), 16, 11)
         print('aliens:'.. GameState.enemies, 90+Camera.x(), 24, 3)
         if Tower._hp <= 0 then
+            Camera.scr_shk_str=0
             print('game over', 50+Camera.x(), 64, 7)
             return
         end
@@ -218,10 +222,13 @@ Tower = {
     _x = 0,
     _y = GROUND_Y,
     _h = 6,
-    _hp = 1000,
+    _hp = TWR_HP,
     update = function()
     end,
     damage = function(hp)
+        if Tower._hp < TWR_DANGER_ZONE then
+            Camera.shake()
+        end
         Tower._hp = Tower._hp - hp
     end,
     draw = function()
