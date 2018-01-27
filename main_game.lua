@@ -9,12 +9,12 @@ Camera = require('camera')
 function _update()
  dx=0
  dy=0
- if (btn(0)) then dx=-1 end
- if (btn(1)) then dx=1 end
- --if (btn(2)) then dy=-1 end
- --if (btn(3)) then dy=1 end
+ if (btn(0)) then Camera.move(-1, 0) end
+ if (btn(1)) then Camera.move(1, 0) end
+ --if (btn(2)) then Camera.move(0, -1) end
+ --if (btn(3)) then Camera.move(0, 1) end
  if (btn(4)) then Cmaera.shake() end
- Camera.update(dx, dy)
+ Camera.update()
 end
 
 function _draw()
