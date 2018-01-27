@@ -19,6 +19,11 @@ Camera = {
     shake = function()
         Camera.scr_shk_str = 4
     end,
+    draw = function()
+        print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
+        print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
+        print('hp:'.. Tower._hp, 100+Camera.x(), 8, 2)
+    end,
     x = function()
         return Camera._x + (rnd (Camera.scr_shk_str*2)) - Camera.scr_shk_str
     end,
@@ -39,13 +44,27 @@ PodFactory = {
         }
     end
 }
-
- Player = {
+Tower = {
     _x = 0,
-    _y =99,
+    _y = 99,
+    _w = 6,
+    _h = 64,
+    _hp = 1000,
+    update = function()
+    end,
+    damage = function(hp)
+        Tower._hp = Tower._hp - hp
+    end,
+    draw = function()
+        rectfill(Tower._x,Tower._y,Tower._x+Tower._w,Tower._y-Tower._h,6)
+    end
+}
+
+Player = {
+    _x = 64,
+    _y = 99,
     _w = 2,
     _h = 5,
-    _o = 64,
     update = function()
     end,
     move = function(dx, dy)
@@ -53,12 +72,39 @@ PodFactory = {
         Player._y = Player._y + dy
     end,
     draw = function()
-        rectfill(Player._x+Player._o,Player._y,Player._x+Player._w+Player._o,Player._y+Player._h,5)
+        rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
+    end
+}
+EnemyFactory = {
+    createWeakling = function(x,y)
+        return {
+            _x = x,
+            _y = y
+        }
     end
 }
 
+function update_enemy(enemy)
+    dx = Player._x - enemy._x
+    dy = Player._y - enemy._y
+    if dx > 0 then
+        enemy._x = enemy._x+1
+    else
+        enemy._x = enemy._x-1
+    end
+    if dy > 0 then
+        enemy._y = enemy._y+1
+    else
+        enemy._y = enemy._y-1
+    end
+end
+
+function draw_enemy(enemy)
+    rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
+end
 
 somepod = PodFactory.create(64, 64)
+anenemy = EnemyFactory.createWeakling(99, 99)
 
 function _update()
  if (btn(0)) then
@@ -73,15 +119,17 @@ function _update()
  --if (btn(3)) then Camera.move(0, 1) end
  if (btn(4)) then Camera.shake() end
  Camera.update()
+ update_enemy(anenemy)
 end
 
 function _draw()
- rectfill(0+Camera.x(),0+Camera.x(),127+Camera.y(),127+Camera.y(),1)
- rectfill(0,99,127,127,2)
+ rectfill(0+Camera.x(),0+Camera.y(),127+Camera.x(),127+Camera.y(),1)
+ rectfill(0+Camera.x(),99+Camera.y(),127+Camera.x(),127+Camera.y(),2)
  circfill(stone_x%127,stone_y%127,2,4)
  Player.draw()
  somepod.draw()
+ Camera.draw()
+ Tower.draw()
+ draw_enemy(anenemy)
 
- print('mem:'.. stat(0), 0, 0, 7)
- print('cpu:'.. stat(1), 0, 8, 7)
 end
