@@ -1,4 +1,4 @@
-DEBUG = true
+DEBUG = false
 
 stone_x = 64
 stone_y = 100
@@ -602,7 +602,7 @@ function check_cmds(cmds)
                 -- error SFX
                 return
             end
-            
+
             if not is_pod_spot_free(Player._x, cfg.size) then
                 -- error GFX?
                 -- error SFX
