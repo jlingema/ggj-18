@@ -156,7 +156,7 @@ update_pod = function(pod)
     if not pod.landed then
         r = rnd(5)
         if r <= 2 then
-            SmokeFactory.create(pod.x, pod.y)
+            SmokeFactory.create(pod.x, pod.y, 6)
         end
     end
     if pod.landed and (time() - pod.landed_t > 1) then
@@ -223,6 +223,7 @@ end
 
 damage_anti_personnel_turret = function(t, dmg)
     t.hp = t.hp - dmg
+    SmokeFactory.create(t._x, t._y, 9)
     if t.hp <= 0 then
         del(ANTI_P_TURRETS, t)
         Camera.shake()
@@ -250,6 +251,7 @@ Tower = {
             Camera.shake()
         end
         Tower._hp = Tower._hp - hp
+        SmokeFactory.create(Tower._x, Tower._y, 9)
     end,
     draw = function()
         spr(32, Tower._x, Tower._y)
@@ -261,11 +263,12 @@ Tower = {
 }
 
 SmokeFactory = {
-    create = function(x,y)
+    create = function(x,y,c)
         s = {
             _x=x,
             _y=y,
-            _c=0
+            _c=0,
+            _clr=c
         }
         add(SMOKE, s)
         return s
@@ -283,7 +286,7 @@ update_smoke = function(s)
 end
 
 draw_smoke = function(s)
-    rectfill(s._x, s._y, s._x+1, s._y+1,6)
+    rectfill(s._x, s._y, s._x+1, s._y+1,s._clr)
 end
 
 Player = {
