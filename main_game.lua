@@ -241,6 +241,7 @@ Player = {
         if abs(Player._x - j._x) < 3 then
             GameState.jelly = GameState.jelly + 1
             del(ALIEN_JELLY, j)
+            sfx(4)
         end
     end
     end,
