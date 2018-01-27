@@ -5,6 +5,8 @@ y = 128-32
 
 pods = {}
 anti_p_turrets = {}
+enemies = {}
+bullets = {}
 
 Camera = {
     _x=0,
@@ -128,21 +130,52 @@ Player = {
     _y = 99,
     _w = 2,
     _h = 5,
+    dir=1,
     update = function()
     end,
     move = function(dx, dy)
         Player._x = Player._x + dx
+        if dx > 0 then dir = 1 else dir = -1 end
         Player._y = Player._y + dy
     end,
     draw = function()
         rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
     end
 }
+
+BulletFactory = {
+    create = function(x,y,dmg,speed)
+        return {
+            speed=speed,
+            x=x,
+            y=y,
+            dmg=dmg
+        }
+    end
+}
+
+function update_bullet(bullet, enemies)
+    pre_x = bullet.x
+    bullet.x = bullet.x+bullet.speed
+    for e in all (enemies) do
+        if e._x > pre_x and e._x < bullet.x then
+            damage_enemy(e, bullet.dmg)
+            return true
+        end
+    end
+    return false
+end
+
+function draw_bullet(bullet)
+    rectfill(bullet.x, bullet.y, bullet.x+1, bullet.y+1,5)
+end
+
 EnemyFactory = {
     createWeakling = function(x,y)
         return {
             _x = x,
-            _y = y
+            _y = y,
+            _hp = 10
         }
     end
 }
@@ -167,7 +200,13 @@ function draw_enemy(enemy)
     rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
 
-anenemy = EnemyFactory.createWeakling(99, 99)
+function damage_enemy(enemy, dmg)
+    enemy._hp = enemy._hp - dmg
+    if enemy._hp <= 0 then del(enemies, enemy) end
+end
+
+-- todo remove this and have an enemy spawner logic thingy
+EnemyFactory.createWeakling(99, 99)
 
 function _update()
     for p in all(pods) do
@@ -187,8 +226,11 @@ function _update()
  --if (btn(2)) then Camera.move(0, -1) end
  --if (btn(3)) then Camera.move(0, 1) end
  if (btn(4)) then Camera.shake() end
+ if (btn(5)) then add(bullets, BulletFactory.create(Player._x, Player._y, 5, Player.dir*5)) end
  Camera.update()
- update_enemy(anenemy)
+ for e in all (enemies) do
+    update_enemy(e)
+ end
 end
 
 function _draw()
@@ -198,11 +240,17 @@ function _draw()
  Player.draw()
  Camera.draw()
  Tower.draw()
- draw_enemy(anenemy)
  for p in all(pods) do
     draw_pod(p)
  end
  for t in all(anti_p_turrets) do
     draw_anti_personnel_turret(t)
+ end
+ for e in all (enemies) do
+    draw_enemy(e)
+ end
+ for b in all (bullets) do
+    draw_bullet(b)
+    if update_bullet(b, enemies) then del(bullets, b) end
  end
 end
