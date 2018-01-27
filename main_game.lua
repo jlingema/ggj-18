@@ -5,9 +5,10 @@ scr_shk_str = 0
 
 
 function _update()
+ GameData = require('data')
  if (btn(0)) then plr_x=plr_x-1 end
  if (btn(1)) then plr_x=plr_x+1 end
- --if (btn(2)) then y=y-1 end
+ if (btn(2)) then y=GameData.p_pos end
  --if (btn(3)) then y=y+1 end
  if (btn(4)) then scr_shk_str=scr_shk_str+4 end
  if(scr_shk_str > 0.1) then  scr_shk_str=scr_shk_str*0.6
