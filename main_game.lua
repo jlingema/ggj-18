@@ -276,7 +276,7 @@ end
 Tower = {
     _x = 0,
     _y = GROUND_Y,
-    _h = 6,
+    _h = 8,
     _hp = TWR_HP,
     _blink_t = 30,
     _is_red = false,
@@ -300,12 +300,14 @@ Tower = {
         SmokeFactory.create(Tower._x, Tower._y, 9)
     end,
     draw = function()
-        spr(32, Tower._x, Tower._y)
-        for i=1,Tower._h-2 do
-            spr(16, Tower._x, Tower._y - 8 * i)
+        spr(55, Tower._x, Tower._y)
+        spr(56, Tower._x+8, Tower._y)
+        spr(39, Tower._x, Tower._y-8)
+        for i = 2,Tower._h-2 do
+            spr(23, Tower._x, Tower._y-8*i)
         end
-        if Tower._is_red then pal(12, 1) end
-        spr(0, Tower._x, Tower._y - 8 * (Tower._h - 1))
+        if Tower._is_red then pal(12, 6) end
+        spr(7, Tower._x, Tower._y-56)
         pal()
     end
 }
@@ -508,7 +510,7 @@ function check_cmds(cmds)
 
         if same then
             PodFactory.create(Player._x, factory)
-            GFXFactory.create(Tower._x + 6, Tower._y - 8 * Tower._h + 4, 48, 53, 4)
+            GFXFactory.create(Tower._x + 5, Tower._y - 8 * Tower._h + 3, 48, 53, 4)
             return
         end
     end
