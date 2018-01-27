@@ -20,13 +20,14 @@ PLR_DMG = 2
 PLR_SPEED = 1
 PLR_SHOOT_SPEED = 10 -- larger = slower
 
-WK_DMG = 5
+WK_DMG = 2
 WK_HP = 10
 
 PODS = {}
 ANTI_P_TURRETS = {}
 ENEMIES = {}
 BULLETS = {}
+ALIEN_JELLY = {}
 
 function sbtn(b)
     if LOCKED_BTN == b then
@@ -65,6 +66,7 @@ Camera = {
         end
         print('wave:'.. GameState.wv, 90+Camera.x(), 0, 2)
         print('hp:'.. Tower._hp, 90+Camera.x(), 8, 2)
+        print('jelly:'.. GameState.jelly, 90+Camera.x(), 16, 11)
         if Tower._hp <= 0 then
             print('game over', 50+Camera.x(), 64, 7)
             return
@@ -85,6 +87,7 @@ GameState = {
     wv = 0,
     wv_time = WAVE_TIME,
     cur = WAVE_TIME,
+    jelly = 0,
     update = function()
         GameState.cur = GameState.cur - 1
         if GameState.cur <= 0 then
@@ -233,6 +236,12 @@ Player = {
     update = function()
         Player.cldn = Player.cldn - 1
         if Player.cldn < 0 then Player.cldn = 0 end
+        for j in all(ALIEN_JELLY) do
+        if abs(Player._x - j._x) < 3 then
+            GameState.jelly = GameState.jelly + 1
+            del(ALIEN_JELLY, j)
+        end
+    end
     end,
     move = function(dx, dy)
         Player._x = Player._x + dx*PLR_SPEED
@@ -247,8 +256,30 @@ Player = {
     end,
     draw = function()
         rectfill(Player._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
-    end
+    end,
 }
+
+JellyFactory = {
+    create = function(x,y)
+        j = {
+            _x=x,
+            _y=y,
+            _o=0
+        }
+        add(ALIEN_JELLY, j)
+        return j
+    end
+
+}
+
+draw_jelly = function(j)
+    circfill(j._x, j._y+sin(j._o), 1, 11)
+end
+
+update_jelly = function(j)
+    j._o = j._o + 0.1
+    if j._o > 1 then j._o = 0 end
+end
 
 BulletFactory = {
     create = function(x,y,dmg,speed)
@@ -330,7 +361,10 @@ end
 
 function damage_enemy(enemy, dmg)
     enemy._hp = enemy._hp - dmg
-    if enemy._hp <= 0 then del(ENEMIES, enemy) end
+    if enemy._hp <= 0 then
+        JellyFactory.create(enemy._x, enemy._y)
+        del(ENEMIES, enemy)
+    end
 end
 
 function check_cmds(cmds)
@@ -385,12 +419,15 @@ function _update()
  for b in all (BULLETS) do
     if update_bullet(b, ENEMIES) then del(BULLETS, b) end
  end
+ for j in all (ALIEN_JELLY) do
+    update_jelly(j)
+ end
 end
 
 function _draw()
  cls(1)
- rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),2)
- circfill(stone_x%127,stone_y%127,2,4)
+ rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),4)
+ circfill(stone_x%127,stone_y%127,2,6)
  Player.draw()
  Camera.draw()
  Tower.draw()
@@ -405,5 +442,8 @@ function _draw()
  end
  for b in all (BULLETS) do
     draw_bullet(b)
+ end
+ for j in all (ALIEN_JELLY) do
+    draw_jelly(j)
  end
 end
