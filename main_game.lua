@@ -5,9 +5,14 @@ stone_x = 64
 stone_y = 100
 cam_x = 0
 y = 128-32
+GROUND_Y = 100
+
 PODS_ORIG_Y = -200
 PODS_Y_RAND = 50
-GROUND_Y = 100
+POD_TYPE = {
+    Normal=1,
+    Big=2
+}
 
 IS_IN_CMD_MODE = false
 LOCKED_BTN = -1
@@ -172,7 +177,7 @@ if DEBUG then
 end
 
 PodFactory = {
-    create = function(x, size, spawn_func, force_y)
+    create = function(type, x, size, spawn_func, force_y)
         p = {
             x = x,
             y = PODS_ORIG_Y + rnd(PODS_Y_RAND * 2) - PODS_Y_RAND,
@@ -181,9 +186,11 @@ PodFactory = {
             spark_idx = -1,
             landed = false,
             landed_t,
-            spawn_func = spawn_func
+            spawn_func = spawn_func,
+            draw = nil
         }
         if force_y != nil then p.y = force_y end
+        if type == POD_TYPE.Normal then p.draw = draw_pod_normal else p.draw = draw_pod_big end
         add(PODS, p)
         set_pod_spot_occupied(x, size)
         sfx(0)
@@ -208,13 +215,23 @@ update_pod = function(pod)
         del(PODS, pod)
     end
 end
-draw_pod = function(pod)
+
+draw_pod_normal = function(pod)
     spr(1, pod.x, pod.y)
     if pod.spark_idx > -1 then
         spr(2 + flr(pod.spark_idx / 5), pod.x + 7, pod.y)
         spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true)
     end
 end
+
+draw_pod_big = function(pod)
+
+end
+
+draw_pod = function(pod)
+    pod.draw(pod)
+end
+
 land_pod = function(pod)
     pod.speed = 0
     pod.spark_idx = 0
@@ -494,7 +511,7 @@ player_damage = function(dmg)
 
     -- could add a timer and have a death animation / effect instead of suddenly popping a pod
     if PLAYER._hp <= 0 then
-        PLAYER_POD = PodFactory.create(10, 0, PlayerFactory.create, -200)
+        PLAYER_POD = PodFactory.create(POD_TYPE.Normal, 10, 0, PlayerFactory.create, -200)
         PLAYER_LOCKED = true
         PLAYER = nil
     end
@@ -536,33 +553,37 @@ BulletFactory = {
             speed=speed,
             x=x,
             y=y,
-            dmg=dmg
+            dmg=dmg,
+            last_x=x
         }
         add(BULLETS, b)
         return b
     end
 }
 
-function update_bullet(bullet, enemies)
-    pre_x = bullet.x
-    bullet.x = bullet.x+bullet.speed
+function update_bullet(bullet)
+    bullet.lastx = bullet.x
+    bullet.x += bullet.speed
+end
+
+function apply_potential_damage(bullet, enemies)
     local dir = 1
-    if pre_x > bullet.x then dir = -1 end
-    bullet.y = bullet.y-1
-    if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
+    if bullet.lastx > bullet.x then dir = -1 end
+    bullet.y = max(bullet.y-1, GROUND_Y+4)
+    -- if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
     for e in all (enemies) do
         if dir > 0 then
-            if pre_x < e._x and e._x <= bullet.x then
+            if bullet.lastx <= e._x and e._x <= bullet.x then
                 damage_enemy(e, bullet.dmg)
                 return true
             end
         else
-            if pre_x > e._x and e._x >= bullet.x then
+            if bullet.lastx >= e._x and e._x >= bullet.x then
                 damage_enemy(e, bullet.dmg)
                 return true
             end
         end
-        -- if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
+        -- if (e._x > bullet.lastx and e._x < bullet.x) or (e._x < bullet.lastx and e._x > bullet.x) then
         --     damage_enemy(e, bullet.dmg)
         --     return true
         -- end
@@ -753,8 +774,8 @@ function is_pod_spot_free(x, size)
     return true
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = {size=4, price=2, factory=AntiPersonnelTurretFactory.create}
-CMD_TO_POD[{0, 3, 2, 3}] = {size=4, price=6, factory=WallFactory.create}
+CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create}
+CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create}
 
 function check_cmds(cmds)
     for candidate, cfg in pairs(CMD_TO_POD) do
@@ -782,7 +803,7 @@ function check_cmds(cmds)
                 return
             end
 
-            PodFactory.create(PLAYER._x, cfg.size, cfg.factory)
+            PodFactory.create(cfg.type, PLAYER._x, cfg.size, cfg.factory)
             GameState.jelly -= cfg.price
             GFXFactory.create(Tower._x + 5, Tower._y - 8 * Tower._h + 3, 48, 53, 4)
             return
@@ -791,7 +812,7 @@ function check_cmds(cmds)
 end
 
 function update_cmds()
-    if btnp(4) then
+    if btnp(4) or (btnp(5) and IS_IN_CMD_MODE) then
         IS_IN_CMD_MODE = not IS_IN_CMD_MODE
         CMDS = {}
     end
@@ -851,8 +872,9 @@ function _update()
     update_enemy(e)
  end
  for b in all (BULLETS) do
-    if update_bullet(b, WEAKLINGS) then del(BULLETS, b) end
-    if update_bullet(b, TANKS) then del(BULLETS, b) end
+    update_bullet(b)
+    if apply_potential_damage(b, WEAKLINGS) then del(BULLETS, b) end
+    if apply_potential_damage(b, TANKS) then del(BULLETS, b) end
  end
  for j in all (ALIEN_JELLY) do
     update_jelly(j)
@@ -908,7 +930,7 @@ function _init()
         show_ggj_logo(34,2.5,10)
     end
 
-    PLAYER_POD = PodFactory.create(10, 0, PlayerFactory.create, -200)
+    PLAYER_POD = PodFactory.create(POD_TYPE.Normal, 10, 0, PlayerFactory.create, -200)
     PLAYER_LOCKED = true
 end
 
