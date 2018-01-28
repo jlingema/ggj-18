@@ -123,10 +123,9 @@ Camera = {
             end
             r+=1
         end
-
-        print("cmds: ", Camera.x(), 24, 7)
+        print("cmds: ", Camera.x(), 8*r, 7)
         for i=1,#CMDS do
-            spr(33 + CMDS[i], Camera.x() + 7 * (i + #CMD_TO_POD), 22)
+            spr(33 + CMDS[i], Camera.x() + 9 * (i + 3) + 2, 8*r)
         end
         local right_offset = 90+Camera.x()
         print('wave:'.. GameState.wv, right_offset, 0, 2)
