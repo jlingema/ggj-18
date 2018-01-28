@@ -39,11 +39,13 @@ WK_DMG = 2
 WK_HP = 10
 WK_ATK_SPEED = 5
 WK_SPEED = 0.5
+WK_SPRITE_START=9
 
 TNK_DMG = 10
 TNK_HP = 20
 TNK_ATK_SPEED = 10
 TNK_SPEED = 0.25
+TNK_SPRITE_START=41
 
 
 PODS = {}
@@ -563,6 +565,7 @@ EnemyFactory = {
             _x = x,
             _y = GROUND_Y,
             hp = WK_HP,
+            max_hp=WK_HP,
             speed=WK_SPEED,
             atk_speed=WK_ATK_SPEED,
             dmg=WK_DMG,
@@ -571,6 +574,7 @@ EnemyFactory = {
             _sprite_idx=0,
             _frame_per_sprite=10,
             _frame_ctr=0,
+            _sprite_strt=WK_SPRITE_START,
             _dir=1
         }
         add(WEAKLINGS, e)
@@ -581,6 +585,7 @@ EnemyFactory = {
             _x = x,
             _y = GROUND_Y,
             hp = TNK_HP,
+            max_hp=TNK_HP,
             speed=TNK_SPEED,
             atk_speed=TNK_ATK_SPEED,
             dmg=TNK_DMG,
@@ -589,6 +594,7 @@ EnemyFactory = {
             _sprite_idx=0,
             _frame_per_sprite=15,
             _frame_ctr=0,
+            _sprite_strt=TNK_SPRITE_START,
             _dir=1
         }
         add(TANKS, e)
@@ -684,24 +690,14 @@ function draw_enemy(enemy)
     end
     local flip = enemy._dir > 0
     if enemy._cdwn > 0 then
-        spr(11, enemy._x, enemy._y, 1, 1, flip)
+        spr(enemy._sprite_strt+2, enemy._x, enemy._y, 1, 1, flip)
         return
     end
-    spr(9 + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
-    -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
-end
-
-function draw_enemy_tank(enemy)
-    if enemy._frame_ctr > enemy._frame_per_sprite then
-        enemy._sprite_idx = (1+enemy._sprite_idx)%2
-        enemy._frame_ctr=0
+    if enemy.hp < enemy.max_hp then
+        perc = enemy.hp / enemy.max_hp
+        draw_healthbar(enemy._x, enemy._y, perc)
     end
-    local flip = enemy._dir > 0
-    if enemy._cdwn > 0 then
-        spr(11, enemy._x, enemy._y, 1, 1, flip)
-        return
-    end
-    spr(9 + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
+    spr(enemy._sprite_strt + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
     -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
 
@@ -877,7 +873,7 @@ function _draw()
     draw_enemy(e)
  end
  for e in all (TANKS) do
-    draw_enemy_tank(e)
+    draw_enemy(e)
  end
  for b in all (BULLETS) do
     draw_bullet(b)
