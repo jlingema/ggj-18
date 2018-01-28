@@ -536,33 +536,37 @@ BulletFactory = {
             speed=speed,
             x=x,
             y=y,
-            dmg=dmg
+            dmg=dmg,
+            last_x=x
         }
         add(BULLETS, b)
         return b
     end
 }
 
-function update_bullet(bullet, enemies)
-    pre_x = bullet.x
-    bullet.x = bullet.x+bullet.speed
+function update_bullet(bullet)
+    bullet.lastx = bullet.x
+    bullet.x += bullet.speed
+end
+
+function apply_potential_damage(bullet, enemies)
     local dir = 1
-    if pre_x > bullet.x then dir = -1 end
-    bullet.y = bullet.y-1
-    if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
+    if bullet.lastx > bullet.x then dir = -1 end
+    bullet.y = max(bullet.y-1, GROUND_Y+4)
+    -- if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
     for e in all (enemies) do
         if dir > 0 then
-            if pre_x < e._x and e._x <= bullet.x then
+            if bullet.lastx <= e._x and e._x <= bullet.x then
                 damage_enemy(e, bullet.dmg)
                 return true
             end
         else
-            if pre_x > e._x and e._x >= bullet.x then
+            if bullet.lastx >= e._x and e._x >= bullet.x then
                 damage_enemy(e, bullet.dmg)
                 return true
             end
         end
-        -- if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
+        -- if (e._x > bullet.lastx and e._x < bullet.x) or (e._x < bullet.lastx and e._x > bullet.x) then
         --     damage_enemy(e, bullet.dmg)
         --     return true
         -- end
@@ -851,8 +855,9 @@ function _update()
     update_enemy(e)
  end
  for b in all (BULLETS) do
-    if update_bullet(b, WEAKLINGS) then del(BULLETS, b) end
-    if update_bullet(b, TANKS) then del(BULLETS, b) end
+    update_bullet(b)
+    if apply_potential_damage(b, WEAKLINGS) then del(BULLETS, b) end
+    if apply_potential_damage(b, TANKS) then del(BULLETS, b) end
  end
  for j in all (ALIEN_JELLY) do
     update_jelly(j)
