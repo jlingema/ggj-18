@@ -38,7 +38,7 @@ PLR_SPEED = 1
 PLR_SHOOT_SPEED = 10 -- larger = slower
 PLAYER_LOCKED = true
 PLAYER_POD = nil
-PLAYER_BASE_Y = 99
+PLAYER_BASE_Y = 100
 
 WK_DMG = 2
 WK_HP = 10
@@ -99,8 +99,9 @@ Camera = {
     --     Camera._x = Camera._x + dx
     --     Camera._y = Camera._y + dy
     -- end,
-    shake = function()
-        Camera.scr_shk_str = 4
+    shake = function(str)
+        if str == nil then str = 4 end
+        Camera.scr_shk_str = str
     end,
     draw = function()
         if DEBUG then
@@ -619,7 +620,8 @@ EnemyFactory = {
             _frame_per_sprite=10,
             _frame_ctr=0,
             _sprite_strt=WK_SPRITE_START,
-            _dir=1
+            _dir=1,
+            _shake_str=0
         }
         add(WEAKLINGS, e)
         return e
@@ -639,7 +641,8 @@ EnemyFactory = {
             _frame_per_sprite=15,
             _frame_ctr=0,
             _sprite_strt=TNK_SPRITE_START,
-            _dir=1
+            _dir=1,
+            _shake_str=1
         }
         add(TANKS, e)
         return e
@@ -692,6 +695,7 @@ function update_enemy(enemy)
             if abs_player_dist < abs(result.dist) and abs_player_dist < 3 then
                 enemy._cdwn = enemy.atk_speed
                 player_damage(enemy.dmg)
+                Camera.shake(enemy._shake_str)
                 sfx(3, 2)
                 return
             end
@@ -707,6 +711,7 @@ function update_enemy(enemy)
         end
         if abs(result.dist) < 3 then
             damage(result.entity, enemy.dmg)
+            Camera.shake(enemy._shake_str)
             enemy._cdwn = enemy.atk_speed
             sfx(3, 2)
         end
@@ -720,6 +725,7 @@ function update_enemy(enemy)
 
         if abs(tower_dist) < 3 then
             Tower.damage(enemy.dmg)
+            Camera.shake(enemy._shake_str)
             enemy._cdwn = enemy.atk_speed
             sfx(3, 2)
             return
@@ -915,7 +921,7 @@ end
 function _draw()
  cls(1)
  rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),4)
- circfill(stone_x%127,stone_y%127,2,6)
+ -- circfill(stone_x%127,stone_y%127,2,6)
 
  if not PLAYER_LOCKED then player_draw() end
 
