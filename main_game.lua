@@ -1,5 +1,5 @@
-DEBUG = true
-DEBUG_JELLY = 20
+DEBUG = false
+DEBUG_JELLY = 2000
 
 stone_x = 64
 stone_y = 100
@@ -25,20 +25,49 @@ TWR_HP = 1000
 WALL_HP = 250
 
 BTW_WAVE_TIME = 10 * 30 -- 10 sec at 30 fps
-AP_DMG = 1
-AP_SHOOT_SPEED = 5
+
+AP_SHOOT_SPEED = 5 -- 5 frames between shoots
 AP_HP = 10
 AP_RANGE=48
+
+AT_SHOOT_SPEED = 30 * 10 -- one shoot every 10 seconds
+AT_HP = 200
+AT_RANGE = AP_RANGE * 3
 
 PLR_HP = 30
 PLR_HEAL = 5 / 30 -- health back per sec
 PLR_SAFE_TIME_BEFORE_HEAL = 3
-PLR_DMG = 2
 PLR_SPEED = 1
 PLR_SHOOT_SPEED = 10 -- larger = slower
 PLAYER_LOCKED = true
 PLAYER_POD = nil
 PLAYER_BASE_Y = 100
+
+TURRET_TYPE = {
+    Player = 1,
+    AntiPersonnel = 2,
+    AntiTank = 3
+}
+
+ENEMY_TYPE = {
+    Weakling = 1,
+    Tank = 2
+}
+
+DMG_LUT = {
+    [TURRET_TYPE.Player] = {
+        [ENEMY_TYPE.Weakling] = 5,
+        [ENEMY_TYPE.Tank] = 0.5
+    },
+    [TURRET_TYPE.AntiPersonnel] = {
+        [ENEMY_TYPE.Weakling] = 10,
+        [ENEMY_TYPE.Tank] = 1,
+    },
+    [TURRET_TYPE.AntiTank] = {
+        [ENEMY_TYPE.Weakling] = 0.5,
+        [ENEMY_TYPE.Tank] = 150
+    }
+}
 
 WK_DMG = 2
 WK_HP = 10
@@ -47,16 +76,16 @@ WK_SPEED = 0.5
 WK_SPRITE_START=9
 
 TNK_DMG = 10
-TNK_HP = 20
+TNK_HP = 100
 TNK_ATK_SPEED = 10
 TNK_SPEED = 0.25
 TNK_SPRITE_START=41
-
 
 PODS = {}
 POD_SPOT = {}
 WALLS = {}
 ANTI_P_TURRETS = {}
+ANTI_T_TURRETS = {}
 WEAKLINGS = {}
 TANKS = {}
 BULLETS = {}
@@ -180,6 +209,7 @@ GameState = {
                 x = 128+(rnd(32))
             end
             EnemyFactory.create_weakling(x)
+            --EnemyFactory.create_tank(x)
         end
     end
 }
@@ -230,18 +260,18 @@ end
 
 draw_pod_normal = function(pod)
     spr(1, pod.x, pod.y)
-    if pod.spark_idx > -1 then
-        spr(2 + flr(pod.spark_idx / 5), pod.x + 7, pod.y)
-        spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true)
-    end
 end
 
 draw_pod_big = function(pod)
-
+    spr(100, pod.x - 4, pod.y - 8, 2, 2)
 end
 
 draw_pod = function(pod)
     pod.draw(pod)
+    if pod.spark_idx > -1 then
+        spr(2 + flr(pod.spark_idx / 5), pod.x + 7, pod.y)
+        spr(2 + flr(pod.spark_idx / 5), pod.x - 7, pod.y, 1, 1, true)
+    end
 end
 
 land_pod = function(pod)
@@ -336,7 +366,7 @@ update_anti_personnel_turret = function(t)
         result = _find_closest(WEAKLINGS, t._x, result.entity)
         if abs(result.dist) < AP_RANGE then
             if result.dist < 0 then t.dir = -1 else t.dir = 1 end
-            BulletFactory.create(t._x+t.dir*3, t._y+3, AP_DMG, 3*t.dir)
+            BulletFactory.create(t._x+t.dir*3, t._y+3, TURRET_TYPE.AntiPersonnel, 3*t.dir)
             sfx(2, 2)
             t.shooting=true
             t.cdwn=t.speed
@@ -350,6 +380,54 @@ draw_anti_personnel_turret = function(t)
         spr(18, t._x, t._y, 1, 1, flip)
     else
         spr(17, t._x, t._y, 1, 1, flip)
+    end
+
+    if t.hp < AP_HP then draw_healthbar(t._x, t._y, t.hp / AP_HP) end
+end
+
+AntiTankTurretFactory = {
+    create = function(x, y, size)
+        t = {
+            _x = x,
+            _y = y,
+            size = size,
+            dir = 1,
+            cdwn = 0,
+            speed = AT_SHOOT_SPEED,
+            hp = AT_HP,
+            shooting = false,
+            _table = ANTI_T_TURRETS,
+            dir=1
+        }
+        if Tower._x > x then t.dir = -1 end
+        add(ANTI_T_TURRETS, t)
+        return t
+    end
+}
+
+update_anti_tank_turret = function(t)
+    t.cdwn = t.cdwn - 1
+    t.shooting=false
+    if t.cdwn <= 0 then
+        result = _find_closest(TANKS, t._x, nil)
+        -- result = _find_closest(WEAKLINGS, t._x, result.entity) -- comment/uncomment to choose if anti tank turrets can fire at weaklings
+        if abs(result.dist) < AT_RANGE then
+            if result.dist < 0 then t.dir = -1 else t.dir = 1 end
+            BulletFactory.create(t._x+t.dir*3, t._y+3, TURRET_TYPE.AntiTank, 3*t.dir, 3)
+            Camera.shake()
+            sfx(2)
+            t.shooting=true
+            t.cdwn=t.speed + rnd(30) - 15 -- random +- 0.5 for avoiding them shooting at the same time
+        end
+    end
+end
+
+draw_anti_tank_turret = function(t)
+    local flip = t.dir < 0
+    if t.shooting then
+        spr(98, t._x - 4, t._y - 8, 2, 2, flip)
+    else
+        spr(96, t._x - 4, t._y - 8, 2, 2, flip)
     end
 
     if t.hp < AP_HP then draw_healthbar(t._x, t._y, t.hp / AP_HP) end
@@ -495,7 +573,7 @@ player_shoot = function()
     if PLAYER_LOCKED then return end
     if PLAYER.cldn <= 0 then
         PLAYER.cldn = PLR_SHOOT_SPEED
-        BulletFactory.create(PLAYER._x, PLAYER._y, 5, PLAYER.dir*5)
+        BulletFactory.create(PLAYER._x, PLAYER._y, TURRET_TYPE.Player, PLAYER.dir*5)
         sfx(2, 2)
     end
 end
@@ -561,14 +639,16 @@ update_jelly = function(j)
 end
 
 BulletFactory = {
-    create = function(x,y,dmg,speed)
+    create = function(x,y,turret_type,speed,size)
         b = {
             speed=speed,
+            size=size,
             x=x,
             y=y,
-            dmg=dmg,
+            turret_type=turret_type,
             last_x=x
         }
+        if b.size == nil then b.size = 1 end
         add(BULLETS, b)
         return b
     end
@@ -587,25 +667,21 @@ function apply_potential_damage(bullet, enemies)
     for e in all (enemies) do
         if dir > 0 then
             if bullet.lastx <= e._x and e._x <= bullet.x then
-                damage_enemy(e, bullet.dmg)
+                damage_enemy(e, DMG_LUT[bullet.turret_type][e.type])
                 return true
             end
         else
             if bullet.lastx >= e._x and e._x >= bullet.x then
-                damage_enemy(e, bullet.dmg)
+                damage_enemy(e, DMG_LUT[bullet.turret_type][e.type])
                 return true
             end
         end
-        -- if (e._x > bullet.lastx and e._x < bullet.x) or (e._x < bullet.lastx and e._x > bullet.x) then
-        --     damage_enemy(e, bullet.dmg)
-        --     return true
-        -- end
     end
     return false
 end
 
 function draw_bullet(bullet)
-    rectfill(bullet.x, bullet.y, bullet.x, bullet.y,9)
+    rectfill(bullet.x, bullet.y, bullet.x + bullet.size - 1, bullet.y + bullet.size - 1, 9)
 end
 
 EnemyFactory = {
@@ -615,6 +691,7 @@ EnemyFactory = {
             _y = GROUND_Y,
             hp = WK_HP,
             max_hp=WK_HP,
+            type = ENEMY_TYPE.Weakling,
             speed=WK_SPEED,
             atk_speed=WK_ATK_SPEED,
             dmg=WK_DMG,
@@ -636,6 +713,7 @@ EnemyFactory = {
             _y = GROUND_Y,
             hp = TNK_HP,
             max_hp=TNK_HP,
+            type = ENEMY_TYPE.Tank,
             speed=TNK_SPEED,
             atk_speed=TNK_ATK_SPEED,
             dmg=TNK_DMG,
@@ -654,7 +732,7 @@ EnemyFactory = {
 }
 
 if DEBUG then
-    EnemyFactory.create_tank(64)
+    -- EnemyFactory.create_tank(64)
 end
 
 function _find_closest(t, from_x, current_closest)
@@ -665,6 +743,21 @@ function _find_closest(t, from_x, current_closest)
         if abs(dx) < abs(min_dist) then
             min_dist = dx
             current_closest = e
+        end
+    end
+    return {dist=min_dist, entity=current_closest}
+end
+
+function _find_closest_from_anti_tank(t, from_x, current_closest, turret_dir)
+    min_dist = 9999 -- outch
+    if current_closest != nil then min_dist = current_closest._x - from_x end
+    for e in all(t) do
+        dx = e._x - from_x
+        if (turret_dir > 0 and e._x >= from_x) or (turret_dir < 0 and e._x <= from_x) then
+            if abs(dx) < abs(min_dist) then
+                min_dist = dx
+                current_closest = e
+            end
         end
     end
     return {dist=min_dist, entity=current_closest}
@@ -812,8 +905,9 @@ function is_pod_spot_free(x, size)
     return true
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create, name="turret"}
-CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create, name="wall"}
+CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create, name="Turret"}
+CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create, name="Wall"}
+CMD_TO_POD[{1, 3, 3, 0}] = {type=POD_TYPE.Big, size=8, price=100, factory=AntiTankTurretFactory.create, name="Canon"}
 
 function check_cmds(cmds)
     for candidate, cfg in pairs(CMD_TO_POD) do
@@ -897,6 +991,9 @@ function _update()
     for t in all(ANTI_P_TURRETS) do
         update_anti_personnel_turret(t)
     end
+    for t in all(ANTI_T_TURRETS) do
+        update_anti_tank_turret(t)
+    end
  --if (sbtn(2)) then Camera.move(0, -1) end
  --if (sbtn(3)) then Camera.move(0, 1) end
  if (sbtn(5)) then player_shoot() end
@@ -953,6 +1050,9 @@ function _draw()
  end
  for t in all(ANTI_P_TURRETS) do
     draw_anti_personnel_turret(t)
+ end
+ for t in all(ANTI_T_TURRETS) do
+    draw_anti_tank_turret(t)
  end
  for e in all (WEAKLINGS) do
     draw_enemy(e)
