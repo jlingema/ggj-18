@@ -1,4 +1,4 @@
-DEBUG = false
+DEBUG = true
 DEBUG_JELLY = 2000
 
 stone_x = 64
@@ -27,11 +27,11 @@ WALL_HP = 250
 BTW_WAVE_TIME = 10 * 30 -- 10 sec at 30 fps
 
 AP_SHOOT_SPEED = 5 -- 5 frames between shoots
-AP_HP = 10
+AP_HP = 20
 AP_RANGE=48
 
 AT_SHOOT_SPEED = 30 * 10 -- one shoot every 10 seconds
-AT_HP = 200
+AT_HP = 30
 AT_RANGE = AP_RANGE * 3
 
 PLR_HP = 30
@@ -42,6 +42,8 @@ PLR_SHOOT_SPEED = 10 -- larger = slower
 PLAYER_LOCKED = true
 PLAYER_POD = nil
 PLAYER_BASE_Y = 100
+
+JELLY_BALL_SIZE = 2
 
 TURRET_TYPE = {
     Player = 1,
@@ -120,7 +122,7 @@ Camera = {
             Camera._x = PLAYER._x-64
             Camera._y = PLAYER._y - PLAYER_BASE_Y
         end
-        if(Camera.scr_shk_str > 0.1) then Camera.scr_shk_str=Camera.scr_shk_str*0.6
+        if (Camera.scr_shk_str > 0.1) then Camera.scr_shk_str=Camera.scr_shk_str*0.6
         else Camera.scr_shk_str=0 end
         camera(Camera.x(), Camera.y())
     end,
@@ -146,10 +148,10 @@ Camera = {
         end
         r = 0
         for keys, cfg in pairs(CMD_TO_POD) do
-            print(cfg.name, Camera.x(), 0+r*8, 6)
-            print('(' .. cfg.price .. ')', Camera.x()+26, 0+r*8, 11)
+            print(cfg.name, Camera.x(), r*8, 6)
+            print('(' .. cfg.price .. ')', Camera.x()+26, r*8, 11)
             for i=1,#keys do
-                spr(57 + keys[i], Camera.x() + 9 * (i + 3) + 2, 0 + 8 * r)
+                spr(57 + keys[i], Camera.x() + 9 * (i + 3) + 12, 8 * r)
             end
             r+=1
         end
@@ -427,7 +429,7 @@ draw_anti_tank_turret = function(t)
         spr(96, t._x - 4, t._y - 8, 2, 2, flip)
     end
 
-    if t.hp < AP_HP then draw_healthbar(t._x, t._y, t.hp / AP_HP) end
+    if t.hp < AT_HP then draw_healthbar(t._x, t._y - 8, t.hp / AT_HP) end
 end
 
 -- Damage for different entities that have similarely built tables (_x, _y, _table, ...)
@@ -626,7 +628,7 @@ JellyFactory = {
 }
 
 draw_jelly = function(j)
-    circfill(j._x, j._y+sin(j._o), 1, 11)
+    circfill(j._x, j._y+sin(j._o), JELLY_BALL_SIZE, 11)
 end
 
 update_jelly = function(j)
@@ -767,6 +769,7 @@ function update_enemy(enemy)
     end
 
     result = _find_closest(ANTI_P_TURRETS, enemy._x, nil)
+    result = _find_closest(ANTI_T_TURRETS, enemy._x, result.entity)
     result = _find_closest(WALLS, enemy._x, result.entity)
 
     tower_dist = Tower._x - enemy._x
