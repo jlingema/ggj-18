@@ -1,4 +1,4 @@
-DEBUG = false
+DEBUG = true
 DEBUG_JELLY = 2000
 
 stone_x = 64
@@ -183,6 +183,9 @@ Camera = {
             print(PRICE_MSG, PRICE_OFFSET+Camera.x(), 48, 8)
         end
         if DEBUG then
+            for i=1,#DEBUG_DIFFICULTY do
+                print('' .. DEBUG_DIFFICULTY[i], Camera.x()+i*16, 100, 8)
+            end
             -- print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
             -- print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
             -- print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
@@ -233,7 +236,7 @@ Camera = {
         return Camera._y + (rnd (Camera.scr_shk_str*2)) - Camera.scr_shk_str
     end
 }
-
+DEBUG_DIFFICULTY = {}
 GameState = {
     wv = 0,
     wv_time = 150,
@@ -252,12 +255,14 @@ GameState = {
         end
     end,
     next_wave = function()
+        DEBUG_DIFFICULTY = {}
         local difficulty=GameState.wv*2
         local x = 0
         local cntr = 0
-        if GameState.wv%5 == 0 and GameState.wv >= 10 then
+        if (GameState.wv+1)%5 == 0 and GameState.wv >= 10 then
             GameState.tnk_wv += 1
-            while difficulty > 0+TNK_COST do
+            while difficulty > TNK_COST do
+                add(DEBUG_DIFFICULTY, difficulty)
                 difficulty -= TNK_COST
                 cntr+=1
                 if cntr%2 == 0 then
@@ -268,7 +273,8 @@ GameState = {
                 EnemyFactory.create_tank(x)
             end
         end
-        while difficulty > 0+WK_COST do
+        while difficulty > WK_COST do
+            add(DEBUG_DIFFICULTY, difficulty)
             cntr+=1
             r = rnd(GameState.tnk_wv)
             if cntr%2 == 0 then
@@ -276,10 +282,10 @@ GameState = {
             else
                 x = 128+(rnd(32))
             end
-            if r > 0.7 then
+            if r > 0.7 and difficulty > TNK_COST then
                 EnemyFactory.create_tank(x)
-                difficulty -= WK_COST
-            elseif r > 0.5 then
+                difficulty -= TNK_COST
+            elseif r > 0.5 and difficulty > MED_COST then
                 EnemyFactory.create_medium(x)
                 difficulty -= MED_COST
             else
@@ -1008,7 +1014,7 @@ function draw_enemy(enemy)
 end
 
 function draw_enemy_tank(enemy)
-    local flip = enemy._dir > 0
+    local flip = enemy._dir < 0
     if enemy.hp < enemy.max_hp then
         perc = enemy.hp / enemy.max_hp
         draw_healthbar(enemy._x+2, enemy._y-4, perc)
