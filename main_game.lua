@@ -1,4 +1,4 @@
-DEBUG = true
+DEBUG = false
 DEBUG_JELLY = 2000
 
 stone_x = 64
@@ -211,12 +211,12 @@ Camera = {
         end
         local right_offset = 90+Camera.x()
         print('wave:'.. GameState.wv, right_offset, 0, 2)
+        print('jelly:'.. GameState.jelly, right_offset, 8, 11)
+        print('aliens:'.. #WEAKLINGS+#TANKS, right_offset, 16, 3)
         if (GameState.cur < BTW_WAVE_TIME) then
-            print('next:'.. ceil(GameState.cur / 30), right_offset, 8, 7)
+            print('next:'.. ceil(GameState.cur / 30), right_offset, 24, 7)
         end
-        -- print('hp:'.. Tower._hp, right_offset, 16, 2)
-        print('jelly:'.. GameState.jelly, right_offset, 16, 11)
-        print('aliens:'.. #WEAKLINGS+#TANKS, right_offset, 24, 3)
+
         pal(8, 12)
         if PLAYER_LOCKED and PLAYER_POD == nil then
             draw_healthbar(right_offset, 32, 1 - (time() - PLAYER_DIED_T) / PLAYER_RESPAWN_TIME)
