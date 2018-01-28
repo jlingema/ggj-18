@@ -227,8 +227,8 @@ Camera = {
             Camera.scr_shk_str=0
             print('game over', 51+Camera.x(), 65, 5)
             print('game over', 50+Camera.x(), 64, 7)
-            print('wave'.. GameState.wv, 51+Camera.x(), 73, 5)
-            print('wave' .. GameState.wv, 50+Camera.x(), 72, 7)
+            print('wave: '.. GameState.wv, 51+Camera.x(), 73, 5)
+            print('wave: ' .. GameState.wv, 50+Camera.x(), 72, 7)
             return
         end
     end,
