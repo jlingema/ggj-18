@@ -41,7 +41,7 @@ PLR_SPEED = 1
 PLR_SHOOT_SPEED = 10 -- larger = slower
 PLAYER_LOCKED = true
 PLAYER_POD = nil
-PLAYER_BASE_Y = 99
+PLAYER_BASE_Y = 100
 
 TURRET_TYPE = {
     Player = 1,
@@ -128,14 +128,15 @@ Camera = {
     --     Camera._x = Camera._x + dx
     --     Camera._y = Camera._y + dy
     -- end,
-    shake = function()
-        Camera.scr_shk_str = 4
+    shake = function(str)
+        if str == nil then str = 4 end
+        Camera.scr_shk_str = str
     end,
     draw = function()
         if DEBUG then
-            print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
-            print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
-            print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
+            -- print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
+            -- print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
+            -- print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
             -- print('spots: ', Camera.x(), 32, 7)
             -- local i = 1
             -- for k, v in pairs(POD_SPOT) do
@@ -143,10 +144,18 @@ Camera = {
             --     i += 1
             -- end
         end
-
-        print("cmds: ", Camera.x(), 24, 7)
+        r = 0
+        for keys, cfg in pairs(CMD_TO_POD) do
+            print(cfg.name, Camera.x(), 0+r*8, 6)
+            print('(' .. cfg.price .. ')', Camera.x()+26, 0+r*8, 11)
+            for i=1,#keys do
+                spr(57 + keys[i], Camera.x() + 9 * (i + 3) + 2, 0 + 8 * r)
+            end
+            r+=1
+        end
+        print("cmds: ", Camera.x(), 8*r, 7)
         for i=1,#CMDS do
-            spr(33 + CMDS[i], Camera.x() + 7 * (i + 2), 22)
+            spr(33 + CMDS[i], Camera.x() + 9 * (i + 3) + 2, 8*r)
         end
         local right_offset = 90+Camera.x()
         print('wave:'.. GameState.wv, right_offset, 0, 2)
@@ -223,7 +232,7 @@ PodFactory = {
         if type == POD_TYPE.Normal then p.draw = draw_pod_normal else p.draw = draw_pod_big end
         add(PODS, p)
         set_pod_spot_occupied(x, size)
-        sfx(0)
+        sfx(0, 2)
         return p
     end
 }
@@ -268,7 +277,7 @@ land_pod = function(pod)
     pod.landed = true
     pod.landed_t = time()
     Camera.shake()
-    sfx(1)
+    sfx(1, 2)
 end
 
 GFXFactory = {
@@ -355,7 +364,7 @@ update_anti_personnel_turret = function(t)
         if abs(result.dist) < AP_RANGE then
             if result.dist < 0 then t.dir = -1 else t.dir = 1 end
             BulletFactory.create(t._x+t.dir*3, t._y+3, TURRET_TYPE.AntiPersonnel, 3*t.dir)
-            sfx(2)
+            sfx(2, 2)
             t.shooting=true
             t.cdwn=t.speed
         end
@@ -541,7 +550,7 @@ player_update = function()
         if abs(PLAYER._x - j._x) < 3 then
             GameState.jelly = GameState.jelly + 1
             del(ALIEN_JELLY, j)
-            sfx(4)
+            sfx(4, 2)
         end
     end
     PLAYER.moving=false
@@ -561,7 +570,7 @@ player_shoot = function()
     if PLAYER.cldn <= 0 then
         PLAYER.cldn = PLR_SHOOT_SPEED
         BulletFactory.create(PLAYER._x, PLAYER._y, TURRET_TYPE.Player, PLAYER.dir*5)
-        sfx(2)
+        sfx(2, 2)
     end
 end
 
@@ -688,7 +697,8 @@ EnemyFactory = {
             _frame_per_sprite=10,
             _frame_ctr=0,
             _sprite_strt=WK_SPRITE_START,
-            _dir=1
+            _dir=1,
+            _shake_str=0
         }
         add(WEAKLINGS, e)
         return e
@@ -709,7 +719,8 @@ EnemyFactory = {
             _frame_per_sprite=15,
             _frame_ctr=0,
             _sprite_strt=TNK_SPRITE_START,
-            _dir=1
+            _dir=1,
+            _shake_str=1
         }
         add(TANKS, e)
         return e
@@ -717,7 +728,7 @@ EnemyFactory = {
 }
 
 if DEBUG then
-    --EnemyFactory.create_tank(5)
+    -- EnemyFactory.create_tank(64)
 end
 
 function _find_closest(t, from_x, current_closest)
@@ -777,7 +788,8 @@ function update_enemy(enemy)
             if abs_player_dist < abs(result.dist) and abs_player_dist < 3 then
                 enemy._cdwn = enemy.atk_speed
                 player_damage(enemy.dmg)
-                sfx(3)
+                Camera.shake(enemy._shake_str)
+                sfx(3, 2)
                 return
             end
         end
@@ -792,8 +804,9 @@ function update_enemy(enemy)
         end
         if abs(result.dist) < 3 then
             damage(result.entity, enemy.dmg)
+            Camera.shake(enemy._shake_str)
             enemy._cdwn = enemy.atk_speed
-            sfx(3)
+            sfx(3, 2)
         end
     else
         -- walk torwards tower
@@ -805,8 +818,9 @@ function update_enemy(enemy)
 
         if abs(tower_dist) < 3 then
             Tower.damage(enemy.dmg)
+            Camera.shake(enemy._shake_str)
             enemy._cdwn = enemy.atk_speed
-            sfx(3)
+            sfx(3, 2)
             return
         end
     end
@@ -822,11 +836,31 @@ function draw_enemy(enemy)
         spr(enemy._sprite_strt+2, enemy._x, enemy._y, 1, 1, flip)
         return
     end
+    spr(enemy._sprite_strt + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
+    -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
+end
+
+function draw_enemy_tank(enemy)
+    local flip = enemy._dir > 0
     if enemy.hp < enemy.max_hp then
         perc = enemy.hp / enemy.max_hp
-        draw_healthbar(enemy._x, enemy._y, perc)
+        draw_healthbar(enemy._x+2, enemy._y-4, perc)
     end
-    spr(enemy._sprite_strt + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
+
+    if enemy._cdwn > 0 then
+        if enemy._frame_ctr > 5 then
+            enemy._sprite_idx = (1+enemy._sprite_idx)%2
+            enemy._frame_ctr=0
+        end
+        spr(70+enemy._sprite_idx*2, enemy._x, enemy._y, 2, 2, flip)
+        return
+    end
+    if enemy._frame_ctr > enemy._frame_per_sprite then
+        enemy._sprite_idx = (1+enemy._sprite_idx)%2
+        enemy._frame_ctr=0
+    end
+    spr(66+enemy._sprite_idx*2, enemy._x, enemy._y, 2, 2, flip)
+    -- spr(enemy._sprite_strt + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
     -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
 
@@ -867,9 +901,9 @@ function is_pod_spot_free(x, size)
     return true
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create}
-CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create}
-CMD_TO_POD[{1, 3, 3, 0}] = {type=POD_TYPE.Big, size=8, price=100, factory=AntiTankTurretFactory.create}
+CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create, name="Turret"}
+CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create, name="Wall"}
+CMD_TO_POD[{1, 3, 3, 0}] = {type=POD_TYPE.Big, size=8, price=100, factory=AntiTankTurretFactory.create, name="Canon"}
 
 function check_cmds(cmds)
     for candidate, cfg in pairs(CMD_TO_POD) do
@@ -984,7 +1018,7 @@ end
 function _draw()
  cls(1)
  rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),4)
- circfill(stone_x%127,stone_y%127,2,6)
+ -- circfill(stone_x%127,stone_y%127,2,6)
 
  if not PLAYER_LOCKED then player_draw() end
 
@@ -1010,7 +1044,7 @@ function _draw()
     draw_enemy(e)
  end
  for e in all (TANKS) do
-    draw_enemy(e)
+    draw_enemy_tank(e)
  end
  for b in all (BULLETS) do
     draw_bullet(b)
