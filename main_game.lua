@@ -596,7 +596,9 @@ EnemyFactory = {
     end
 }
 
-EnemyFactory.create_tank(5)
+if DEBUG then
+    EnemyFactory.create_tank(5)
+end
 
 function _find_closest(t, from_x, current_closest)
     min_dist = 9999 -- outch
