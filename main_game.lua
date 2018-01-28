@@ -371,7 +371,7 @@ land_pod = function(pod)
     end
 
     -- not working on enemies for some reason
-    
+
     -- for e in all(WEAKLINGS) do
     --     if aoe_min_x <= e._x and e._x <= aoe_max_x then
     --         damage_enemy(e, e.hp + 1)
@@ -1029,7 +1029,7 @@ end
 function damage_enemy(enemy, dmg)
     enemy.hp = enemy.hp - dmg
     if enemy.hp <= 0 then
-        JellyFactory.create(enemy._x, enemy._y)
+        JellyFactory.create(enemy._x, PLAYER_BASE_Y)
         del(enemy._table, enemy)
     end
 end
