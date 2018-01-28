@@ -40,11 +40,18 @@ WK_HP = 10
 WK_ATK_SPEED = 5
 WK_SPEED = 0.5
 
+TNK_DMG = 2
+TNK_HP = 10
+TNK_ATK_SPEED = 5
+TNK_SPEED = 0.25
+
+
 PODS = {}
 POD_SPOT = {}
 WALLS = {}
 ANTI_P_TURRETS = {}
-ENEMIES = {}
+WEAKLINGS = {}
+TANKS = {}
 BULLETS = {}
 GFXS = {}
 
@@ -132,7 +139,7 @@ GameState = {
     jelly = 0,
     enemies=0,
     update = function()
-        if #ENEMIES == 0 then
+        if #WEAKLINGS + #TANKS == 0 then
             GameState.cur -= 1
             if GameState.cur <= 0 then
                 GameState.cur = GameState.wv_time
@@ -292,23 +299,14 @@ update_anti_personnel_turret = function(t)
     t.cdwn = t.cdwn - 1
     t.shooting=false
     if t.cdwn <= 0 then
-        x = t._x
-        y = t._y
-        min = AP_RANGE
-        closest = nil
-        for e in all(ENEMIES) do
-            dx = e._x - t._x
-            if abs(dx) < abs(min) and dx > -32 then
-                min = dx
-                closest = e
-            end
-        end
-        if abs(min) < AP_RANGE then
-            if min < 0 then t.dir = -1 else t.dir = 1 end
-            BulletFactory.create(x+t.dir*3,y+3,AP_DMG,3*t.dir)
+        result = _find_closest(TANKS, t._x, nil)
+        result = _find_closest(WEAKLINGS, t._x, result.entity)
+        if abs(result.dist) < AP_RANGE then
+            if result.dist < 0 then t.dir = -1 else t.dir = 1 end
+            BulletFactory.create(t._x+t.dir*3, t._y+3, AP_DMG, 3*t.dir)
             sfx(2)
-            t.shooting = true
-            t.cdwn = t.speed
+            t.shooting=true
+            t.cdwn=t.speed
         end
     end
 end
@@ -545,9 +543,6 @@ function update_bullet(bullet, enemies)
     pre_x = bullet.x
     bullet.x = bullet.x+bullet.speed
     bullet.y = bullet.y-1
-    if bullet.x > 127 or bullet.x < 0 then
-        return true -- takes care of the deletion
-    end
     if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
     for e in all (enemies) do
         if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
@@ -574,7 +569,7 @@ EnemyFactory = {
             _frame_ctr=0,
             _dir=1
         }
-        add(ENEMIES, e)
+        add(WEAKLINGS, e)
         return e
     end
 }
@@ -673,7 +668,7 @@ function damage_enemy(enemy, dmg)
     enemy._hp = enemy._hp - dmg
     if enemy._hp <= 0 then
         JellyFactory.create(enemy._x, enemy._y)
-        del(ENEMIES, enemy)
+        del(WEAKLINGS, enemy)
         GameState.enemies = GameState.enemies - 1
     end
 end
@@ -796,11 +791,11 @@ function _update()
  Tower.update()
  Camera.update()
  GameState.update()
- for e in all (ENEMIES) do
+ for e in all (WEAKLINGS) do
     update_enemy(e)
  end
  for b in all (BULLETS) do
-    if update_bullet(b, ENEMIES) then del(BULLETS, b) end
+    if update_bullet(b, WEAKLINGS) then del(BULLETS, b) end
  end
  for j in all (ALIEN_JELLY) do
     update_jelly(j)
@@ -832,7 +827,7 @@ function _draw()
  for t in all(ANTI_P_TURRETS) do
     draw_anti_personnel_turret(t)
  end
- for e in all (ENEMIES) do
+ for e in all (WEAKLINGS) do
     draw_enemy(e)
  end
  for b in all (BULLETS) do
