@@ -820,6 +820,9 @@ BulletFactory = {
 function update_bullet(bullet)
     bullet.lastx = bullet.x
     bullet.x += bullet.speed
+    if abs(bullet.x) > 256 then
+        del(BULLETS, bullet)
+    end
 end
 
 function apply_potential_damage(bullet, enemies)
