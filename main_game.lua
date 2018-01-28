@@ -154,10 +154,10 @@ GameState = {
         for i = 1,spawn do
             if i%2 == 0 then
                 local x = -128-(rnd(32))
-                EnemyFactory.createWeakling(x, GROUND_Y)
+                EnemyFactory.create_weakling(x, WEAKLINGS)
             else
                 local x = 128+(rnd(32))
-                EnemyFactory.createWeakling(x, GROUND_Y)
+                EnemyFactory.create_weakling(x, WEAKLINGS)
             end
         end
     end
@@ -558,18 +558,19 @@ function draw_bullet(bullet)
 end
 
 EnemyFactory = {
-    createWeakling = function(x)
+    create_weakling = function(x, table)
         e = {
             _x = x,
             _y = GROUND_Y,
-            _hp = WK_HP,
+            hp = WK_HP,
+            _table=table,
             _cdwn = 0,
             _sprite_idx=0,
             _frame_per_sprite=10,
             _frame_ctr=0,
             _dir=1
         }
-        add(WEAKLINGS, e)
+        add(table, e)
         return e
     end
 }
@@ -665,10 +666,10 @@ function draw_enemy(enemy)
 end
 
 function damage_enemy(enemy, dmg)
-    enemy._hp = enemy._hp - dmg
-    if enemy._hp <= 0 then
+    enemy.hp = enemy.hp - dmg
+    if enemy.hp <= 0 then
         JellyFactory.create(enemy._x, enemy._y)
-        del(WEAKLINGS, enemy)
+        del(enemy._table, enemy)
         GameState.enemies = GameState.enemies - 1
     end
 end
