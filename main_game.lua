@@ -40,9 +40,9 @@ WK_HP = 10
 WK_ATK_SPEED = 5
 WK_SPEED = 0.5
 
-TNK_DMG = 2
-TNK_HP = 10
-TNK_ATK_SPEED = 5
+TNK_DMG = 10
+TNK_HP = 20
+TNK_ATK_SPEED = 10
 TNK_SPEED = 0.25
 
 
@@ -152,13 +152,13 @@ GameState = {
         local spawn=GameState.wv*2
         GameState.enemies = GameState.enemies+spawn
         for i = 1,spawn do
+            local x = 0
             if i%2 == 0 then
-                local x = -128-(rnd(32))
-                EnemyFactory.create_weakling(x, WEAKLINGS)
+                x = -128-(rnd(32))
             else
-                local x = 128+(rnd(32))
-                EnemyFactory.create_weakling(x, WEAKLINGS)
+                x = 128+(rnd(32))
             end
+            EnemyFactory.create_weakling(x)
         end
     end
 }
@@ -558,22 +558,45 @@ function draw_bullet(bullet)
 end
 
 EnemyFactory = {
-    create_weakling = function(x, table)
+    create_weakling = function(x)
         e = {
             _x = x,
             _y = GROUND_Y,
             hp = WK_HP,
-            _table=table,
+            speed=WK_SPEED,
+            atk_speed=WK_ATK_SPEED,
+            dmg=WK_DMG,
+            _table=WEAKLINGS,
             _cdwn = 0,
             _sprite_idx=0,
             _frame_per_sprite=10,
             _frame_ctr=0,
             _dir=1
         }
-        add(table, e)
+        add(WEAKLINGS, e)
+        return e
+    end,
+    create_tank = function(x)
+        e = {
+            _x = x,
+            _y = GROUND_Y,
+            hp = TNK_HP,
+            speed=TNK_SPEED,
+            atk_speed=TNK_ATK_SPEED,
+            dmg=TNK_DMG,
+            _table=TANKS,
+            _cdwn = 0,
+            _sprite_idx=0,
+            _frame_per_sprite=15,
+            _frame_ctr=0,
+            _dir=1
+        }
+        add(TANKS, e)
         return e
     end
 }
+
+EnemyFactory.create_tank(5)
 
 function _find_closest(t, from_x, current_closest)
     min_dist = 9999 -- outch
@@ -608,15 +631,15 @@ function update_enemy(enemy)
         if abs_player_dist < abs(tower_dist) and abs(tower_dist) > 8 then
             if (PLAYER._x < enemy._x and enemy._x < Tower._x) or (Tower._x < enemy._x and enemy._x < PLAYER._x) then
                 if PLAYER._x < enemy._x then
-                    enemy._x = enemy._x-WK_SPEED
+                    enemy._x = enemy._x-enemy.speed
                 else
-                    enemy._x = enemy._x+WK_SPEED
+                    enemy._x = enemy._x+enemy.speed
                 end
                 return
             end
             if abs_player_dist < abs(result.dist) and abs_player_dist < 3 then
-                enemy._cdwn = WK_ATK_SPEED
-                player_damage(WK_DMG)
+                enemy._cdwn = enemy.atk_speed
+                player_damage(enemy.dmg)
                 sfx(3)
                 return
             end
@@ -626,26 +649,26 @@ function update_enemy(enemy)
     if result.entity != nil then
         -- Entity closer than tower or player
         if result.dist > 0 then
-            enemy._x = enemy._x+WK_SPEED
+            enemy._x = enemy._x+enemy.speed
         else
-            enemy._x = enemy._x-WK_SPEED
+            enemy._x = enemy._x-enemy.speed
         end
         if abs(result.dist) < 3 then
-            damage(result.entity, WK_DMG)
-            enemy._cdwn = WK_ATK_SPEED
+            damage(result.entity, enemy.dmg)
+            enemy._cdwn = enemy.atk_speed
             sfx(3)
         end
     else
         -- walk torwards tower
         if tower_dist > 0 then
-            enemy._x = enemy._x+WK_SPEED
+            enemy._x = enemy._x+enemy.speed
         else
-            enemy._x = enemy._x-WK_SPEED
+            enemy._x = enemy._x-enemy.speed
         end
 
         if abs(tower_dist) < 3 then
-            Tower.damage(WK_DMG)
-            enemy._cdwn = WK_ATK_SPEED
+            Tower.damage(enemy.dmg)
+            enemy._cdwn = enemy.atk_speed
             sfx(3)
             return
         end
@@ -665,6 +688,21 @@ function draw_enemy(enemy)
     spr(9 + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
     -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
+
+function draw_enemy_tank(enemy)
+    if enemy._frame_ctr > enemy._frame_per_sprite then
+        enemy._sprite_idx = (1+enemy._sprite_idx)%2
+        enemy._frame_ctr=0
+    end
+    local flip = enemy._dir > 0
+    if enemy._cdwn > 0 then
+        spr(11, enemy._x, enemy._y, 1, 1, flip)
+        return
+    end
+    spr(9 + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
+    -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
+end
+
 
 function damage_enemy(enemy, dmg)
     enemy.hp = enemy.hp - dmg
@@ -796,8 +834,12 @@ function _update()
  for e in all (WEAKLINGS) do
     update_enemy(e)
  end
+ for e in all (TANKS) do
+    update_enemy(e)
+ end
  for b in all (BULLETS) do
     if update_bullet(b, WEAKLINGS) then del(BULLETS, b) end
+    if update_bullet(b, TANKS) then del(BULLETS, b) end
  end
  for j in all (ALIEN_JELLY) do
     update_jelly(j)
@@ -831,6 +873,9 @@ function _draw()
  end
  for e in all (WEAKLINGS) do
     draw_enemy(e)
+ end
+ for e in all (TANKS) do
+    draw_enemy_tank(e)
  end
  for b in all (BULLETS) do
     draw_bullet(b)
