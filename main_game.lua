@@ -66,6 +66,9 @@ CMD_TO_POD = {}
 SMOKE = {}
 
 ALIEN_JELLY = {}
+RND_ROCKS = {}
+RND_MOUNTAINS = {}
+
 
 function sbtn(b)
     if LOCKED_BTN == b then
@@ -489,6 +492,7 @@ player_move = function(dx, dy)
 end
 
 player_shoot = function()
+    if PLAYER_LOCKED then return end
     if PLAYER.cldn <= 0 then
         PLAYER.cldn = PLR_SHOOT_SPEED
         BulletFactory.create(PLAYER._x, PLAYER._y, 5, PLAYER.dir*5)
@@ -921,6 +925,16 @@ end
 function _draw()
  cls(1)
  rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),4)
+ ybase = 99+Camera.y()
+ for rock in all(RND_MOUNTAINS) do
+    rectfill(rock.x,ybase+10,rock.x+rock.size*20,ybase-rock.size*20,4)
+ end
+ for rock in all(RND_ROCKS) do
+    if abs(rock.x) > 16 then
+        rectfill(rock.x,100,rock.x+rock.size*16,100+rock.size*16,2)
+    end
+ end
+
  -- circfill(stone_x%127,stone_y%127,2,6)
 
  if not PLAYER_LOCKED then player_draw() end
@@ -963,7 +977,16 @@ function _init()
     if not DEBUG then
         show_ggj_logo(34,2.5,10)
     end
-
+    for i=1,128 do
+        r = rnd(1)
+        if r < 0.5 then
+            add(RND_ROCKS, {x=(i-64)*8, size=r})
+        end
+        m = rnd(1)
+        if m < 0.5 then
+            add(RND_MOUNTAINS, {x=(i-64)*8, size=m})
+        end
+    end
     PLAYER_POD = PodFactory.create(POD_TYPE.Normal, 10, 0, PlayerFactory.create, -200)
     PLAYER_LOCKED = true
 end
