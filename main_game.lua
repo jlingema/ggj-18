@@ -43,6 +43,8 @@ PLAYER_LOCKED = true
 PLAYER_POD = nil
 PLAYER_BASE_Y = 100
 
+JELLY_DECAY_TIME = BTW_WAVE_TIME/2
+
 TURRET_TYPE = {
     Player = 1,
     AntiPersonnel = 2,
@@ -627,7 +629,9 @@ JellyFactory = {
         j = {
             _x=x,
             _y=y,
-            _o=0
+            _o=0,
+            _age=0,
+            _clr=11
         }
         add(ALIEN_JELLY, j)
         return j
@@ -636,12 +640,22 @@ JellyFactory = {
 }
 
 draw_jelly = function(j)
-    circfill(j._x, j._y+sin(j._o), 1, 11)
+    if j._age > JELLY_DECAY_TIME - THREE_SECS then
+        if j._age%10 == 0 then
+            if j._clr == 11 then j._clr = 6 else j._clr = 11 end
+        end
+    end
+    circfill(j._x, j._y+sin(j._o), 1, j._clr)
 end
 
+THREE_SECS = 30*3
 update_jelly = function(j)
     j._o = j._o + 0.1
     if j._o > 1 then j._o = 0 end
+    j._age += 1
+    if j._age > JELLY_DECAY_TIME then
+        del(ALIEN_JELLY, j)
+    end
 end
 
 BulletFactory = {
