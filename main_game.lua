@@ -1,3 +1,6 @@
+-- pico-pods
+-- by natsirtt & joschka
+
 DEBUG = false
 DEBUG_JELLY = 2000
 
@@ -51,7 +54,7 @@ WK_COST = 1
 
 END_TIMER=90
 
-JELLY_DECAY_TIME = BTW_WAVE_TIME
+JELLY_DECAY_TIME = 20 * 30
 JELLY_BALL_SIZE = 1
 
 TURRET_TYPE = {
