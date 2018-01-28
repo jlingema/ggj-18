@@ -43,6 +43,10 @@ PLAYER_LOCKED = true
 PLAYER_POD = nil
 PLAYER_BASE_Y = 100
 
+TNK_COST = 7
+MED_COST = 2
+WK_COST = 1
+
 JELLY_DECAY_TIME = BTW_WAVE_TIME/2
 JELLY_BALL_SIZE = 2
 
@@ -176,7 +180,7 @@ Camera = {
         end
         print('hp:'.. Tower._hp, right_offset, 16, 2)
         print('jelly:'.. GameState.jelly, right_offset, 24, 11)
-        print('aliens:'.. GameState.enemies, right_offset, 32, 3)
+        print('aliens:'.. (#WEAKLINGS+#TANKS), right_offset, 32, 3)
         if Tower._hp <= 0 then
             Camera.scr_shk_str=0
             print('game over', 50+Camera.x(), 64, 7)
@@ -197,6 +201,7 @@ GameState = {
     cur = 100,
     jelly = 0,
     enemies=0,
+    tnk_wv=0,
     update = function()
         if #WEAKLINGS + #TANKS == 0 then
             GameState.cur -= 1
@@ -208,17 +213,40 @@ GameState = {
         end
     end,
     next_wave = function()
-        local spawn=GameState.wv*2
-        GameState.enemies = GameState.enemies+spawn
-        for i = 1,spawn do
-            local x = 0
-            if i%2 == 0 then
+        local difficulty=GameState.wv*2
+        local x = 0
+        local cntr = 0
+        if GameState.wv%5 == 0 and GameState.wv >= 10 then
+            GameState.tnk_wv += 1
+            while difficulty > 0+TNK_COST do
+                difficulty -= TNK_COST
+                cntr+=1
+                if cntr%2 == 0 then
+                    x = -128-(rnd(32))
+                else
+                    x = 128+(rnd(32))
+                end
+                EnemyFactory.create_tank(x)
+            end
+        end
+        while difficulty > 0+WK_COST do
+            cntr+=1
+            r = rnd(GameState.tnk_wv)
+            if cntr%2 == 0 then
                 x = -128-(rnd(32))
             else
                 x = 128+(rnd(32))
             end
-            EnemyFactory.create_weakling(x)
-            --EnemyFactory.create_tank(x)
+            if r > 0.7 then
+                EnemyFactory.create_tank(x)
+                difficulty -= WK_COST
+            elseif r > 0.5 then
+                EnemyFactory.create_medium(x)
+                difficulty -= MED_COST
+            else
+                EnemyFactory.create_weakling(x)
+                difficulty -= WK_COST
+            end
         end
     end
 }
@@ -918,7 +946,6 @@ function damage_enemy(enemy, dmg)
     if enemy.hp <= 0 then
         JellyFactory.create(enemy._x, enemy._y)
         del(enemy._table, enemy)
-        GameState.enemies = GameState.enemies - 1
     end
 end
 
@@ -949,8 +976,8 @@ function is_pod_spot_free(x, size)
     return true
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create, name="Turret"}
-CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create, name="Wall"}
+CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=20, factory=AntiPersonnelTurretFactory.create, name="Turret"}
+CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=15, factory=WallFactory.create, name="Wall"}
 CMD_TO_POD[{1, 3, 3, 0}] = {type=POD_TYPE.Big, size=8, price=100, factory=AntiTankTurretFactory.create, name="Canon"}
 
 function check_cmds(cmds)
