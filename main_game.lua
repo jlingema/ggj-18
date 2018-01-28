@@ -1,4 +1,4 @@
-DEBUG = true
+DEBUG = false
 DEBUG_JELLY = 2000
 
 stone_x = 64
@@ -111,6 +111,11 @@ ALIEN_JELLY = {}
 RND_ROCKS = {}
 RND_MOUNTAINS = {}
 
+PRICE_MSG='too few jellies'
+PRICE_OFFSET=64
+
+OCC_MSG='no space here'
+OCC_OFFSET=64
 
 function sbtn(b)
     if LOCKED_BTN == b then
@@ -127,7 +132,17 @@ Camera = {
     _x=0,
     _y=0,
     scr_shk_str = 0,
+    occupied=false,
+    price=false,
+    delay_cntr=0,
     update = function()
+        if Camera.occupied or Camera.price then
+            Camera.delay_cntr -= 1
+            if Camera.delay_cntr < 0 then
+                Camera.occupied = false
+                Camera.price = false
+            end
+        end
         if PLAYER_LOCKED then
             Camera._x = PLAYER_POD.x-64
             Camera._y = PLAYER_POD.y - PLAYER_BASE_Y
@@ -148,7 +163,21 @@ Camera = {
         if str == nil then str = 4 end
         Camera.scr_shk_str = str
     end,
+    occupied_error = function()
+        Camera.occupied = true
+        Camera.delay_cntr = 60
+    end,
+    price_error = function()
+        Camera.price = true
+        Camera.delay_cntr = 60
+    end,
     draw = function()
+        if Camera.delay_cntr > 0 and Camera.occupied then
+            print(OCC_MSG, OCC_OFFSET+Camera.x(), 48, 8)
+        end
+        if Camera.delay_cntr > 0 and Camera.price then
+            print(PRICE_MSG, PRICE_OFFSET+Camera.x(), 48, 8)
+        end
         if DEBUG then
             -- print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
             -- print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
@@ -995,14 +1024,14 @@ function check_cmds(cmds)
         if same then
             -- Check if the spot is free
             if GameState.jelly < cfg.price then
-                -- error GFX
-                -- error SFX
+                Camera.price_error()
                 return
             end
 
             if not is_pod_spot_free(PLAYER._x, cfg.size) then
                 -- error GFX?
                 -- error SFX
+                Camera.occupied_error()
                 return
             end
 
