@@ -25,17 +25,20 @@ AP_SHOOT_SPEED = 5
 AP_HP = 10
 AP_RANGE=48
 
-PLR_HP = 100
-PLR_HEAL = 5 / 30 -- 10 health back per sec
+PLR_HP = 30
+PLR_HEAL = 5 / 30 -- health back per sec
+PLR_SAFE_TIME_BEFORE_HEAL = 3
 PLR_DMG = 2
 PLR_SPEED = 1
 PLR_SHOOT_SPEED = 10 -- larger = slower
+PLAYER_LOCKED = true
+PLAYER_POD = nil
+PLAYER_BASE_Y = 99
 
 WK_DMG = 2
 WK_HP = 10
 WK_ATK_SPEED = 5
 WK_SPEED = 0.5
-
 
 PODS = {}
 POD_SPOT = {}
@@ -66,7 +69,13 @@ Camera = {
     _y=0,
     scr_shk_str = 0,
     update = function()
-        Camera._x = PLAYER._x-64
+        if PLAYER_LOCKED then
+            Camera._x = PLAYER_POD.x-64
+            Camera._y = PLAYER_POD.y - PLAYER_BASE_Y
+        else
+            Camera._x = PLAYER._x-64
+            Camera._y = PLAYER._y - PLAYER_BASE_Y
+        end
         if(Camera.scr_shk_str > 0.1) then Camera.scr_shk_str=Camera.scr_shk_str*0.6
         else Camera.scr_shk_str=0 end
         camera(Camera.x(), Camera.y())
@@ -83,12 +92,12 @@ Camera = {
             print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
             print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
             print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
-            print('spots: ', Camera.x(), 35, 7)
-            local i = 1
-            for k, v in pairs(POD_SPOT) do
-                print(tostr(k), Camera.x() + 8 * (i + 1) + 15, 35, 7)
-                i += 1
-            end
+            -- print('spots: ', Camera.x(), 32, 7)
+            -- local i = 1
+            -- for k, v in pairs(POD_SPOT) do
+            --     print(tostr(k), Camera.x() + 8 * (i + 1) + 15, 35, 7)
+            --     i += 1
+            -- end
         end
 
         print("cmds: ", Camera.x(), 24, 7)
@@ -151,7 +160,7 @@ if DEBUG then
 end
 
 PodFactory = {
-    create = function(x, size, spawn_func)
+    create = function(x, size, spawn_func, force_y)
         p = {
             x = x,
             y = PODS_ORIG_Y + rnd(PODS_Y_RAND * 2) - PODS_Y_RAND,
@@ -162,6 +171,7 @@ PodFactory = {
             landed_t,
             spawn_func = spawn_func
         }
+        if force_y != nil then p.y = force_y end
         add(PODS, p)
         set_pod_spot_occupied(x, size)
         sfx(0)
@@ -256,6 +266,7 @@ end
 function draw_wall(w)
     -- todo draw HP using the health bar function
     spr(19, w._x, w._y, 1, 1, w.dir < 0)
+    if w.hp < WALL_HP then draw_healthbar(w._x, w._y, w.hp / WALL_HP) end
 end
 
 AntiPersonnelTurretFactory = {
@@ -308,6 +319,8 @@ draw_anti_personnel_turret = function(t)
     else
         spr(17, t._x, t._y, 1, 1, flip)
     end
+
+    if t.hp < AP_HP then draw_healthbar(t._x, t._y, t.hp / AP_HP) end
 end
 
 -- Damage for different entities that have similarely built tables (_x, _y, _table, ...)
@@ -390,10 +403,10 @@ draw_smoke = function(s)
 end
 
 PlayerFactory = {
-    create = function(x)
+    create = function(x, y, size)
         pl = {
-            _x = 0,
-            _y = 99,
+            _x = x,
+            _y = y,
             _w = 2,
             _h = 5,
             _spr_idx=0,
@@ -403,7 +416,11 @@ PlayerFactory = {
             cldn=0,
             moving=false,
             _hp=PLR_HP,
+            _last_dmg_t = -PLR_SAFE_TIME_BEFORE_HEAL
         }
+        PLAYER = pl
+        PLAYER_LOCKED = false
+        PLAYER_POD = nil
         return pl
     end
 }
@@ -412,10 +429,14 @@ player_update = function()
     if PLAYER.moving then
         PLAYER._frame_ctr += 1
     end
-    PLAYER._hp += PLR_HEAL
-    if PLAYER._hp > PLR_HP then
-        PLAYER._hp = PLR_HP
+
+    if time() - PLAYER._last_dmg_t >= PLR_SAFE_TIME_BEFORE_HEAL then        
+        PLAYER._hp += PLR_HEAL
+        if PLAYER._hp > PLR_HP then
+            PLAYER._hp = PLR_HP
+        end
     end
+
     PLAYER.cldn = PLAYER.cldn - 1
     if PLAYER.cldn < 0 then PLAYER.cldn = 0 end
     for j in all(ALIEN_JELLY) do
@@ -432,7 +453,7 @@ player_move = function(dx, dy)
     if PLAYER.cldn > 0 then
         return
     end
-    PLAYER._x = PLAYER._x + dx*PLR_SPEED
+    PLAYER._x = PLAYER._x + dx*PLR_SPEED* max(PLAYER._hp / PLR_HP, 0.6)
     if dx > 0 then PLAYER.dir = 1 else PLAYER.dir = -1 end
     PLAYER._y = PLAYER._y + dy*PLR_SPEED
     PLAYER.moving=true
@@ -463,8 +484,17 @@ player_draw = function()
     spr(25+PLAYER._spr_idx, PLAYER._x, PLAYER._y, 1, 1, flip)
     -- rectfill(PLAYER._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
 end
+
 player_damage = function(dmg)
     PLAYER._hp = PLAYER._hp - dmg
+    PLAYER._last_dmg_t = time()
+
+    -- could add a timer and have a death animation / effect instead of suddenly popping a pod
+    if PLAYER._hp <= 0 then
+        PLAYER_POD = PodFactory.create(10, 0, PlayerFactory.create, -200)
+        PLAYER_LOCKED = true
+        PLAYER = nil
+    end
 end
 
 draw_healthbar = function(x,y,percent)
@@ -565,18 +595,30 @@ function update_enemy(enemy)
     end
 
     result = _find_closest(ANTI_P_TURRETS, enemy._x, nil)
-    -- result = _find_closest(WALLS, enemy._x, result.entity)
+    result = _find_closest(WALLS, enemy._x, result.entity)
 
     tower_dist = Tower._x - enemy._x
     if abs(tower_dist) <= abs(result.dist) then 
         result.entity = nil
-    else
-        dx = PLAYER._x - enemy._x
-        if abs(dx) < abs(result.dist) and abs(dx) < 3 then
-            player_damage(WK_DMG)
-            enemy._cdwn = WK_ATK_SPEED
-            sfx(3)
-            return
+    end
+       
+    if not PLAYER_LOCKED then
+        abs_player_dist = abs(PLAYER._x - enemy._x)
+        if abs_player_dist < abs(tower_dist) and abs(tower_dist) > 8 then
+            if (PLAYER._x < enemy._x and enemy._x < Tower._x) or (Tower._x < enemy._x and enemy._x < PLAYER._x) then
+                if PLAYER._x < enemy._x then
+                    enemy._x = enemy._x-WK_SPEED
+                else
+                    enemy._x = enemy._x+WK_SPEED
+                end
+                return
+            end
+            if abs_player_dist < abs(result.dist) and abs_player_dist < 3 then
+                enemy._cdwn = WK_ATK_SPEED
+                player_damage(WK_DMG)
+                sfx(3)
+                return
+            end
         end
     end
 
@@ -649,6 +691,8 @@ function set_pod_spot_occupied(x, size)
 end
 
 function is_pod_spot_free(x, size)
+    if size == 0 then return true end
+
     local s2 = ceil(size / 2)
     for i=-s2,s2 do
         if POD_SPOT[x+i] then return false end
@@ -718,7 +762,17 @@ function _update()
     if Tower._hp <= 0 then return end
 
     update_cmds()
-    player_update()
+
+    if not PLAYER_LOCKED then
+        if (sbtn(0)) then
+            player_move(-1, 0)
+         end
+         if (sbtn(1)) then
+            player_move(1, 0)
+         end
+
+        player_update()
+    end
 
     for gfx in all(GFXS) do
         update_gfx(gfx)
@@ -732,12 +786,6 @@ function _update()
     for t in all(ANTI_P_TURRETS) do
         update_anti_personnel_turret(t)
     end
- if (sbtn(0)) then
-    player_move(-1, 0)
- end
- if (sbtn(1)) then
-    player_move(1, 0)
- end
  --if (sbtn(2)) then Camera.move(0, -1) end
  --if (sbtn(3)) then Camera.move(0, 1) end
  if (sbtn(5)) then player_shoot() end
@@ -762,7 +810,9 @@ function _draw()
  cls(1)
  rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),4)
  circfill(stone_x%127,stone_y%127,2,6)
- player_draw()
+
+ if not PLAYER_LOCKED then player_draw() end
+
  Camera.draw()
  Tower.draw()
 
@@ -798,9 +848,10 @@ function _init()
     if not DEBUG then
         show_ggj_logo(34,2.5,10)
     end
-end
 
-PLAYER = PlayerFactory.create(0)
+    PLAYER_POD = PodFactory.create(10, 0, PlayerFactory.create, -200)
+    PLAYER_LOCKED = true
+end
 
 function show_ggj_logo(ggjy,ggjw,ggjs)
     ggjw=90+ggjw*30*ggjs
