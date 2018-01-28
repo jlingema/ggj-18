@@ -23,3 +23,18 @@ RUN
 ```
 
 The bat-script simply is a wrapper around the picotool that runs the build command and copies the cartridge to the expected location on Windows.
+
+## Playing the game
+
+After you launched the game with PICO-8 use the following controls to defend your Transmission Tower.
+
+```
+left      - walk left / enter command
+right     - walk right / enter command
+up        - enter command
+down      - enter command
+primary   - shoot
+secondary - enter command mode
+```
+
+When in command mode you can call down turrets, canons and walls to help you in the defense.
