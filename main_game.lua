@@ -795,7 +795,7 @@ function check_cmds(cmds)
 end
 
 function update_cmds()
-    if btnp(4) then
+    if btnp(4) or (btnp(5) and IS_IN_CMD_MODE) then
         IS_IN_CMD_MODE = not IS_IN_CMD_MODE
         CMDS = {}
     end
