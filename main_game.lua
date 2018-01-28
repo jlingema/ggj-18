@@ -75,6 +75,12 @@ WK_ATK_SPEED = 5
 WK_SPEED = 0.5
 WK_SPRITE_START=9
 
+MED_DMG = 3
+MED_HP = 20
+MED_ATK_SPEED = 5
+MED_SPEED = 0.5
+MED_SPRITE_START=9
+
 TNK_DMG = 10
 TNK_HP = 100
 TNK_ATK_SPEED = 10
@@ -707,6 +713,28 @@ EnemyFactory = {
         add(WEAKLINGS, e)
         return e
     end,
+    create_medium = function(x)
+        e = {
+            _x = x,
+            _y = GROUND_Y,
+            hp = MED_HP,
+            max_hp=MED_HP,
+            type = ENEMY_TYPE.Weakling,
+            speed=MED_SPEED,
+            atk_speed=MED_ATK_SPEED,
+            dmg=MED_DMG,
+            _table=WEAKLINGS,
+            _cdwn = 0,
+            _sprite_idx=0,
+            _frame_per_sprite=10,
+            _frame_ctr=0,
+            _sprite_strt=MED_SPRITE_START,
+            _dir=1,
+            _shake_str=0
+        }
+        add(WEAKLINGS, e)
+        return e
+    end,
     create_tank = function(x)
         e = {
             _x = x,
@@ -719,7 +747,7 @@ EnemyFactory = {
             dmg=TNK_DMG,
             _table=TANKS,
             _cdwn = 0,
-            _sprite_idx=0,
+            _sprite_idx=41,
             _frame_per_sprite=15,
             _frame_ctr=0,
             _sprite_strt=TNK_SPRITE_START,
