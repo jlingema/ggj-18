@@ -1,4 +1,4 @@
-DEBUG = true
+DEBUG = false
 DEBUG_JELLY = 2000
 
 stone_x = 64
