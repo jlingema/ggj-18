@@ -104,9 +104,9 @@ Camera = {
     end,
     draw = function()
         if DEBUG then
-            print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
-            print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
-            print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
+            -- print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
+            -- print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
+            -- print('cmdmode: ' .. tostr(IS_IN_CMD_MODE), Camera.x(), 16, 7)
             -- print('spots: ', Camera.x(), 32, 7)
             -- local i = 1
             -- for k, v in pairs(POD_SPOT) do
@@ -114,10 +114,19 @@ Camera = {
             --     i += 1
             -- end
         end
+        r = 0
+        for keys, cfg in pairs(CMD_TO_POD) do
+            print(cfg.name, Camera.x(), 0+r*8, 6)
+            print('(' .. cfg.price .. ')', Camera.x()+26, 0+r*8, 11)
+            for i=1,#keys do
+                spr(57 + keys[i], Camera.x() + 9 * (i + 3) + 2, 0 + 8 * r)
+            end
+            r+=1
+        end
 
         print("cmds: ", Camera.x(), 24, 7)
         for i=1,#CMDS do
-            spr(33 + CMDS[i], Camera.x() + 7 * (i + 2), 22)
+            spr(33 + CMDS[i], Camera.x() + 7 * (i + #CMD_TO_POD), 22)
         end
         local right_offset = 90+Camera.x()
         print('wave:'.. GameState.wv, right_offset, 0, 2)
@@ -794,8 +803,8 @@ function is_pod_spot_free(x, size)
     return true
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create}
-CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create}
+CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create, name="turret"}
+CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create, name="wall"}
 
 function check_cmds(cmds)
     for candidate, cfg in pairs(CMD_TO_POD) do
