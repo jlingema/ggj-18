@@ -545,6 +545,9 @@ function update_bullet(bullet, enemies)
     pre_x = bullet.x
     bullet.x = bullet.x+bullet.speed
     bullet.y = bullet.y-1
+    if bullet.x > 127 or bullet.x < 0 then
+        return true -- takes care of the deletion
+    end
     if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
     for e in all (enemies) do
         if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
