@@ -225,7 +225,10 @@ Camera = {
 
         if Tower._hp <= 0 then
             Camera.scr_shk_str=0
+            print('game over', 51+Camera.x(), 65, 5)
             print('game over', 50+Camera.x(), 64, 7)
+            print('wave'.. GameState.wv, 51+Camera.x(), 73, 5)
+            print('wave' .. GameState.wv, 50+Camera.x(), 72, 7)
             return
         end
     end,
@@ -248,7 +251,7 @@ GameState = {
         if #WEAKLINGS + #TANKS == 0 then
             GameState.cur -= 1
             if GameState.cur <= 0 then
-                GameState.cur = GameState.wv_time
+                GameState.cur = BTW_WAVE_TIME
                 GameState.wv = GameState.wv+1
                 GameState.next_wave()
             end
