@@ -193,7 +193,7 @@ PodFactory = {
         if type == POD_TYPE.Normal then p.draw = draw_pod_normal else p.draw = draw_pod_big end
         add(PODS, p)
         set_pod_spot_occupied(x, size)
-        sfx(0)
+        sfx(0, 2)
         return p
     end
 }
@@ -238,7 +238,7 @@ land_pod = function(pod)
     pod.landed = true
     pod.landed_t = time()
     Camera.shake()
-    sfx(1)
+    sfx(1, 2)
 end
 
 GFXFactory = {
@@ -325,7 +325,7 @@ update_anti_personnel_turret = function(t)
         if abs(result.dist) < AP_RANGE then
             if result.dist < 0 then t.dir = -1 else t.dir = 1 end
             BulletFactory.create(t._x+t.dir*3, t._y+3, AP_DMG, 3*t.dir)
-            sfx(2)
+            sfx(2, 2)
             t.shooting=true
             t.cdwn=t.speed
         end
@@ -463,7 +463,7 @@ player_update = function()
         if abs(PLAYER._x - j._x) < 3 then
             GameState.jelly = GameState.jelly + 1
             del(ALIEN_JELLY, j)
-            sfx(4)
+            sfx(4, 2)
         end
     end
     PLAYER.moving=false
@@ -483,7 +483,7 @@ player_shoot = function()
     if PLAYER.cldn <= 0 then
         PLAYER.cldn = PLR_SHOOT_SPEED
         BulletFactory.create(PLAYER._x, PLAYER._y, 5, PLAYER.dir*5)
-        sfx(2)
+        sfx(2, 2)
     end
 end
 
@@ -639,7 +639,7 @@ EnemyFactory = {
 }
 
 if DEBUG then
-    EnemyFactory.create_tank(5)
+    EnemyFactory.create_tank(64)
 end
 
 function _find_closest(t, from_x, current_closest)
@@ -684,7 +684,7 @@ function update_enemy(enemy)
             if abs_player_dist < abs(result.dist) and abs_player_dist < 3 then
                 enemy._cdwn = enemy.atk_speed
                 player_damage(enemy.dmg)
-                sfx(3)
+                sfx(3, 2)
                 return
             end
         end
@@ -700,7 +700,7 @@ function update_enemy(enemy)
         if abs(result.dist) < 3 then
             damage(result.entity, enemy.dmg)
             enemy._cdwn = enemy.atk_speed
-            sfx(3)
+            sfx(3, 2)
         end
     else
         -- walk torwards tower
@@ -713,7 +713,7 @@ function update_enemy(enemy)
         if abs(tower_dist) < 3 then
             Tower.damage(enemy.dmg)
             enemy._cdwn = enemy.atk_speed
-            sfx(3)
+            sfx(3, 2)
             return
         end
     end
@@ -729,11 +729,31 @@ function draw_enemy(enemy)
         spr(enemy._sprite_strt+2, enemy._x, enemy._y, 1, 1, flip)
         return
     end
+    spr(enemy._sprite_strt + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
+    -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
+end
+
+function draw_enemy_tank(enemy)
+    local flip = enemy._dir > 0
     if enemy.hp < enemy.max_hp then
         perc = enemy.hp / enemy.max_hp
-        draw_healthbar(enemy._x, enemy._y, perc)
+        draw_healthbar(enemy._x+2, enemy._y-4, perc)
     end
-    spr(enemy._sprite_strt + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
+
+    if enemy._cdwn > 0 then
+        if enemy._frame_ctr > 5 then
+            enemy._sprite_idx = (1+enemy._sprite_idx)%2
+            enemy._frame_ctr=0
+        end
+        spr(70+enemy._sprite_idx*2, enemy._x, enemy._y, 2, 2, flip)
+        return
+    end
+    if enemy._frame_ctr > enemy._frame_per_sprite then
+        enemy._sprite_idx = (1+enemy._sprite_idx)%2
+        enemy._frame_ctr=0
+    end
+    spr(66+enemy._sprite_idx*2, enemy._x, enemy._y, 2, 2, flip)
+    -- spr(enemy._sprite_strt + enemy._sprite_idx, enemy._x, enemy._y, 1, 1, flip)
     -- rectfill(enemy._x, enemy._y, enemy._x+4, enemy._y+4,8)
 end
 
@@ -910,7 +930,7 @@ function _draw()
     draw_enemy(e)
  end
  for e in all (TANKS) do
-    draw_enemy(e)
+    draw_enemy_tank(e)
  end
  for b in all (BULLETS) do
     draw_bullet(b)
