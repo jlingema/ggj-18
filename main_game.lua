@@ -902,7 +902,7 @@ function _draw()
 end
 
 -- GGJ 2018 logo by Dylan Bennett https://gist.github.com/MBoffin/0ad8ffc850fb797fe2d90fcc98d81492
-
+music(0)
 function _init()
     if not DEBUG then
         show_ggj_logo(34,2.5,10)
