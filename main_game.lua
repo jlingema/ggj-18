@@ -42,8 +42,10 @@ PLR_SHOOT_SPEED = 10 -- larger = slower
 PLAYER_LOCKED = true
 PLAYER_POD = nil
 PLAYER_BASE_Y = 100
+PLAYER_DIED_T = 0
+PLAYER_RESPAWN_TIME = 2
 
-JELLY_BALL_SIZE = 2
+JELLY_BALL_SIZE = 1
 
 TURRET_TYPE = {
     Player = 1,
@@ -115,9 +117,11 @@ Camera = {
     scr_shk_str = 0,
     update = function()
         if PLAYER_LOCKED then
-            Camera._x = PLAYER_POD.x-64
-            Camera._y = PLAYER_POD.y - PLAYER_BASE_Y
-            Camera.scr_shk_str = 2
+            if PLAYER_POD != nil then
+                Camera._x = PLAYER_POD.x-64
+                Camera._y = PLAYER_POD.y - PLAYER_BASE_Y
+                Camera.scr_shk_str = 2
+            end
         else
             Camera._x = PLAYER._x-64
             Camera._y = PLAYER._y - PLAYER_BASE_Y
@@ -164,9 +168,15 @@ Camera = {
         if (GameState.cur < BTW_WAVE_TIME) then
             print('next:'.. ceil(GameState.cur / 30), right_offset, 8, 7)
         end
-        print('hp:'.. Tower._hp, right_offset, 16, 2)
-        print('jelly:'.. GameState.jelly, right_offset, 24, 11)
-        print('aliens:'.. GameState.enemies, right_offset, 32, 3)
+        -- print('hp:'.. Tower._hp, right_offset, 16, 2)
+        print('jelly:'.. GameState.jelly, right_offset, 16, 11)
+        print('aliens:'.. GameState.enemies, right_offset, 24, 3)
+        pal(8, 12)
+        if PLAYER_LOCKED and PLAYER_POD == nil then
+            draw_healthbar(right_offset, 32, 1 - (time() - PLAYER_DIED_T) / PLAYER_RESPAWN_TIME)
+        end
+        pal()
+
         if Tower._hp <= 0 then
             Camera.scr_shk_str=0
             print('game over', 50+Camera.x(), 64, 7)
@@ -228,13 +238,14 @@ PodFactory = {
             landed = false,
             landed_t,
             spawn_func = spawn_func,
-            draw = nil
+            draw = nil,
+            type = type
         }
         if force_y != nil then p.y = force_y end
         if type == POD_TYPE.Normal then p.draw = draw_pod_normal else p.draw = draw_pod_big end
         add(PODS, p)
         set_pod_spot_occupied(x, size)
-        sfx(0, 2)
+        sfx(0, 3)
         return p
     end
 }
@@ -280,6 +291,31 @@ land_pod = function(pod)
     pod.landed_t = time()
     Camera.shake()
     sfx(1, 2)
+
+    -- AOE damage
+    local half_size = pod.obj_size / 2
+    local aoe_min_x = pod.x - half_size
+    local aoe_max_x = pod.x + half_size
+
+    if not PLAYER_LOCKED then
+        if aoe_min_x <= PLAYER._x and PLAYER._x <= aoe_max_x then
+            player_damage(PLAYER._hp + 1)
+        end
+    end
+
+    for e in all(WEAKLINGS) do
+        if aoe_min_x <= e._x and e._x <= aoe_max_x then
+            damage_enemy(e, e.hp + 1)
+        end
+    end
+
+    if type == POD_TYPE.Big then
+        for e in all(TANKS) do
+            if aoe_min_x <= e._x and e._x <= aoe_max_x then
+                damage_enemy(e, e.hp + 1)
+            end
+        end
+    end
 end
 
 GFXFactory = {
@@ -414,7 +450,7 @@ update_anti_tank_turret = function(t)
             if result.dist < 0 then t.dir = -1 else t.dir = 1 end
             BulletFactory.create(t._x+t.dir*3, t._y+3, TURRET_TYPE.AntiTank, 3*t.dir, 3)
             Camera.shake()
-            sfx(2)
+            sfx(2, 3)
             t.shooting=true
             t.cdwn=t.speed + rnd(30) - 15 -- random +- 0.5 for avoiding them shooting at the same time
         end
@@ -472,6 +508,7 @@ Tower = {
         SmokeFactory.create(Tower._x, Tower._y, 9)
     end,
     draw = function()
+        if Tower._hp < TWR_HP then draw_healthbar(Tower._x, Tower._y - 8 * Tower._h, Tower._hp / TWR_HP) end
         spr(55, Tower._x, Tower._y)
         spr(56, Tower._x+8, Tower._y)
         spr(39, Tower._x, Tower._y-8)
@@ -535,6 +572,15 @@ PlayerFactory = {
 }
 
 player_update = function()
+    if PLAYER_LOCKED then
+        if PLAYER_POD == nil then
+            if time() - PLAYER_DIED_T >= PLAYER_RESPAWN_TIME then
+                PLAYER_POD = PodFactory.create(POD_TYPE.Normal, 15, 0, PlayerFactory.create, -200)
+            end
+        end
+        return
+    end
+
     if PLAYER.moving then
         PLAYER._frame_ctr += 1
     end
@@ -577,6 +623,8 @@ player_shoot = function()
 end
 
 player_draw = function()
+    if PLAYER_LOCKED then return end
+
     local flip = PLAYER.dir < 0
     if PLAYER._frame_ctr > PLAYER._frames_per_spr then
         PLAYER._frame_ctr = 0
@@ -594,15 +642,21 @@ player_draw = function()
     -- rectfill(PLAYER._x,Player._y,Player._x+Player._w,Player._y+Player._h,5)
 end
 
+player_respawn = function()
+    GameState.jelly = 0
+    PLAYER_LOCKED = true
+    PLAYER = nil
+end
+
 player_damage = function(dmg)
     PLAYER._hp = PLAYER._hp - dmg
     PLAYER._last_dmg_t = time()
 
+    -- respawn player
     -- could add a timer and have a death animation / effect instead of suddenly popping a pod
     if PLAYER._hp <= 0 then
-        PLAYER_POD = PodFactory.create(POD_TYPE.Normal, 10, 0, PlayerFactory.create, -200)
-        PLAYER_LOCKED = true
-        PLAYER = nil
+        PLAYER_DIED_T = PLAYER._last_dmg_t
+        player_respawn()
     end
 end
 
@@ -628,7 +682,8 @@ JellyFactory = {
 }
 
 draw_jelly = function(j)
-    circfill(j._x, j._y+sin(j._o), JELLY_BALL_SIZE, 11)
+    --circfill(j._x, j._y+sin(j._o), JELLY_BALL_SIZE, 11)
+    rectfill(j._x, j._y+sin(j._o), j._x + JELLY_BALL_SIZE, j._y+sin(j._o) + JELLY_BALL_SIZE, 11)
 end
 
 update_jelly = function(j)
@@ -974,9 +1029,8 @@ function _update()
          if (sbtn(1)) then
             player_move(1, 0)
          end
-
-        player_update()
     end
+    player_update()
 
     for gfx in all(GFXS) do
         update_gfx(gfx)
@@ -1023,7 +1077,7 @@ function _draw()
  rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),4)
  -- circfill(stone_x%127,stone_y%127,2,6)
 
- if not PLAYER_LOCKED then player_draw() end
+ player_draw()
 
  Camera.draw()
  Tower.draw()
