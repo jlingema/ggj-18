@@ -72,6 +72,7 @@ Camera = {
         if PLAYER_LOCKED then
             Camera._x = PLAYER_POD.x-64
             Camera._y = PLAYER_POD.y - PLAYER_BASE_Y
+            Camera.scr_shk_str = 2
         else
             Camera._x = PLAYER._x-64
             Camera._y = PLAYER._y - PLAYER_BASE_Y
@@ -430,7 +431,7 @@ player_update = function()
         PLAYER._frame_ctr += 1
     end
 
-    if time() - PLAYER._last_dmg_t >= PLR_SAFE_TIME_BEFORE_HEAL then        
+    if time() - PLAYER._last_dmg_t >= PLR_SAFE_TIME_BEFORE_HEAL then
         PLAYER._hp += PLR_HEAL
         if PLAYER._hp > PLR_HP then
             PLAYER._hp = PLR_HP
@@ -598,10 +599,10 @@ function update_enemy(enemy)
     result = _find_closest(WALLS, enemy._x, result.entity)
 
     tower_dist = Tower._x - enemy._x
-    if abs(tower_dist) <= abs(result.dist) then 
+    if abs(tower_dist) <= abs(result.dist) then
         result.entity = nil
     end
-       
+
     if not PLAYER_LOCKED then
         abs_player_dist = abs(PLAYER._x - enemy._x)
         if abs_player_dist < abs(tower_dist) and abs(tower_dist) > 8 then
