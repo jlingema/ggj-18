@@ -1206,7 +1206,6 @@ function _draw()
 
  player_draw()
 
- Camera.draw()
  Tower.draw()
 
  for gfx in all(GFXS) do
@@ -1239,6 +1238,8 @@ function _draw()
  for s in all (SMOKE) do
     draw_smoke(s)
  end
+ Camera.draw()
+
 end
 
 -- GGJ 2018 logo by Dylan Bennett https://gist.github.com/MBoffin/0ad8ffc850fb797fe2d90fcc98d81492
