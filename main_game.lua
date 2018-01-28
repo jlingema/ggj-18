@@ -49,6 +49,8 @@ TNK_COST = 20
 MED_COST = 2
 WK_COST = 1
 
+END_TIMER=90
+
 JELLY_DECAY_TIME = BTW_WAVE_TIME
 JELLY_BALL_SIZE = 1
 
@@ -584,8 +586,14 @@ Tower = {
         end
         Tower._hp = Tower._hp - hp
         SmokeFactory.create(Tower._x, Tower._y, 9)
+        if Tower._hp <= 0 and END_TIMER > 50 then
+            for i=1,5 do
+                SmokeFactory.create(Tower._x, Tower._y, 6, 3)
+            end
+        end
     end,
     draw = function()
+        if Tower._hp <= 0 then return end
         if Tower._hp < TWR_HP then draw_healthbar(Tower._x, Tower._y - 8 * Tower._h, Tower._hp / TWR_HP) end
         spr(55, Tower._x, Tower._y)
         spr(56, Tower._x+8, Tower._y)
@@ -600,12 +608,14 @@ Tower = {
 }
 
 SmokeFactory = {
-    create = function(x,y,c)
+    create = function(x,y,c,size)
+        if size == nil then size=1 end
         s = {
             _x=x,
             _y=y,
             _c=0,
-            _clr=c
+            _clr=c,
+            _size=size
         }
         add(SMOKE, s)
         return s
@@ -623,7 +633,7 @@ update_smoke = function(s)
 end
 
 draw_smoke = function(s)
-    rectfill(s._x, s._y, s._x+1, s._y+1,s._clr)
+    rectfill(s._x, s._y, s._x+s._size, s._y+s._size,s._clr)
 end
 
 PlayerFactory = {
@@ -1076,7 +1086,7 @@ function is_pod_spot_free(x, size)
     return true
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=20, factory=AntiPersonnelTurretFactory.create, name="Turret"}
+CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=10, factory=AntiPersonnelTurretFactory.create, name="Turret"}
 CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=15, factory=WallFactory.create, name="Wall"}
 CMD_TO_POD[{1, 3, 3, 0}] = {type=POD_TYPE.Big, size=8, price=100, factory=AntiTankTurretFactory.create, name="Canon"}
 
@@ -1135,7 +1145,7 @@ function update_cmds()
 end
 
 function _update()
-    if Tower._hp <= 0 then return end
+    if Tower._hp <= 0 and END_TIMER <= 0 then return elseif Tower._hp <= 0 then END_TIMER -= 1 end
 
     update_cmds()
 
