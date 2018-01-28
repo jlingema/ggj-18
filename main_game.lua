@@ -189,6 +189,11 @@ Camera = {
         if Camera.delay_cntr > 0 and Camera.price then
             print(PRICE_MSG, PRICE_OFFSET+Camera.x(), 48, 8)
         end
+        if PLAYER then
+            if abs(PLAYER._x) > 96 then
+                print('defend the tower', Camera.x()+32, 56, 8)
+            end
+        end
         if DEBUG then
             for i=1,#DEBUG_DIFFICULTY do
                 print('' .. DEBUG_DIFFICULTY[i], Camera.x()+i*16, 100, 8)
@@ -269,7 +274,7 @@ GameState = {
         local difficulty=GameState.wv*2
         local x = 0
         local cntr = 0
-        if (GameState.wv+1)%5 == 0 and GameState.wv >= 10 then
+        if (GameState.wv)%5 == 0 and GameState.wv >= 10 then
             GameState.tnk_wv += 1
             while difficulty > TNK_COST do
                 add(DEBUG_DIFFICULTY, difficulty)
