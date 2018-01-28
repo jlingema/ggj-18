@@ -1035,7 +1035,7 @@ end
 function damage_enemy(enemy, dmg)
     enemy.hp = enemy.hp - dmg
     if enemy.hp <= 0 then
-        JellyFactory.create(enemy._x, PLAYER_BASE_Y)
+        JellyFactory.create(enemy._x, PLAYER_BASE_Y + 4)
         del(enemy._table, enemy)
     end
 end
