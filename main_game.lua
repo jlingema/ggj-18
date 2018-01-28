@@ -20,7 +20,7 @@ CMDS = {}
 CMDS_MAX = 4
 
 TWR_DANGER_ZONE = 300
-TWR_HP = 1000
+TWR_HP = 300
 
 WALL_HP = 250
 
@@ -34,7 +34,7 @@ AT_SHOOT_SPEED = 30 * 10 -- one shoot every 10 seconds
 AT_HP = 30
 AT_RANGE = AP_RANGE * 3
 
-PLR_HP = 30
+PLR_HP = 20
 PLR_HEAL = 5 / 30 -- health back per sec
 PLR_SAFE_TIME_BEFORE_HEAL = 3
 PLR_SPEED = 1
@@ -79,6 +79,11 @@ DMG_LUT = {
         [ENEMY_TYPE.Tank] = 150
     }
 }
+JELLY_NUMBER_LUT = {
+    [ENEMY_TYPE.Weakling] = 1,
+    [ENEMY_TYPE.Tank] = 5,
+}
+
 
 WK_DMG = 2
 WK_HP = 10
@@ -1054,9 +1059,12 @@ end
 function damage_enemy(enemy, dmg)
     enemy.hp = enemy.hp - dmg
     if enemy.hp <= 0 then
-        JellyFactory.create(enemy._x, PLAYER_BASE_Y + 4)
+        for i=1,JELLY_NUMBER_LUT[enemy.type] do
+            JellyFactory.create(enemy._x, PLAYER_BASE_Y + 4)
+        end
         del(enemy._table, enemy)
     end
+
 end
 
 -- Where pods come to existence!
@@ -1088,7 +1096,7 @@ end
 
 CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=10, factory=AntiPersonnelTurretFactory.create, name="Turret"}
 CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=15, factory=WallFactory.create, name="Wall"}
-CMD_TO_POD[{1, 3, 3, 0}] = {type=POD_TYPE.Big, size=8, price=100, factory=AntiTankTurretFactory.create, name="Canon"}
+CMD_TO_POD[{1, 3, 3, 0}] = {type=POD_TYPE.Big, size=8, price=50, factory=AntiTankTurretFactory.create, name="Canon"}
 
 function check_cmds(cmds)
     for candidate, cfg in pairs(CMD_TO_POD) do
