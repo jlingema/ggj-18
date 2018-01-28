@@ -38,16 +38,16 @@ PLR_HP = 30
 PLR_HEAL = 5 / 30 -- health back per sec
 PLR_SAFE_TIME_BEFORE_HEAL = 3
 PLR_SPEED = 1
-PLR_SHOOT_SPEED = 10 -- larger = slower
+PLR_SHOOT_SPEED = 5 -- larger = slower
 PLAYER_LOCKED = true
 PLAYER_POD = nil
 PLAYER_BASE_Y = 100
 
-TNK_COST = 7
+TNK_COST = 20
 MED_COST = 2
 WK_COST = 1
 
-JELLY_DECAY_TIME = BTW_WAVE_TIME/2
+JELLY_DECAY_TIME = BTW_WAVE_TIME
 JELLY_BALL_SIZE = 2
 
 TURRET_TYPE = {
@@ -63,8 +63,8 @@ ENEMY_TYPE = {
 
 DMG_LUT = {
     [TURRET_TYPE.Player] = {
-        [ENEMY_TYPE.Weakling] = 5,
-        [ENEMY_TYPE.Tank] = 0.5
+        [ENEMY_TYPE.Weakling] = 2.5,
+        [ENEMY_TYPE.Tank] = 0.25
     },
     [TURRET_TYPE.AntiPersonnel] = {
         [ENEMY_TYPE.Weakling] = 10,
@@ -226,7 +226,7 @@ Camera = {
 
 GameState = {
     wv = 0,
-    wv_time = BTW_WAVE_TIME,
+    wv_time = 150,
     cur = 100,
     jelly = 0,
     enemies=0,
@@ -885,8 +885,10 @@ function update_enemy(enemy)
             if (PLAYER._x < enemy._x and enemy._x < Tower._x) or (Tower._x < enemy._x and enemy._x < PLAYER._x) then
                 if PLAYER._x < enemy._x then
                     enemy._x = enemy._x-enemy.speed
+                    enemy._dir = -1
                 else
                     enemy._x = enemy._x+enemy.speed
+                    enemy._dir = 1
                 end
                 return
             end
@@ -904,8 +906,10 @@ function update_enemy(enemy)
         -- Entity closer than tower or player
         if result.dist > 0 then
             enemy._x = enemy._x+enemy.speed
+            enemy._dir = 1
         else
             enemy._x = enemy._x-enemy.speed
+            enemy._dir = -1
         end
         if abs(result.dist) < 3 then
             damage(result.entity, enemy.dmg)
@@ -917,8 +921,10 @@ function update_enemy(enemy)
         -- walk torwards tower
         if tower_dist > 0 then
             enemy._x = enemy._x+enemy.speed
+            enemy._dir = 1
         else
             enemy._x = enemy._x-enemy.speed
+            enemy._dir = -1
         end
 
         if abs(tower_dist) < 3 then
@@ -936,7 +942,7 @@ function draw_enemy(enemy)
         enemy._sprite_idx = (1+enemy._sprite_idx)%2
         enemy._frame_ctr=0
     end
-    local flip = enemy._dir > 0
+    local flip = enemy._dir < 0
     if enemy._cdwn > 0 then
         spr(enemy._sprite_strt+2, enemy._x, enemy._y, 1, 1, flip)
         return
