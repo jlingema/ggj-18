@@ -589,6 +589,7 @@ function _find_closest(t, from_x, current_closest)
 end
 
 function update_enemy(enemy)
+    enemy._frame_ctr += 1
     if enemy._cdwn > 0 then
         enemy._cdwn = enemy._cdwn - 1
         return
