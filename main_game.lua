@@ -1,4 +1,4 @@
-DEBUG = true
+DEBUG = false
 DEBUG_JELLY = 2000
 
 stone_x = 64
@@ -45,6 +45,11 @@ PLAYER_BASE_Y = 100
 PLAYER_DIED_T = 0
 PLAYER_RESPAWN_TIME = 2
 
+TNK_COST = 7
+MED_COST = 2
+WK_COST = 1
+
+JELLY_DECAY_TIME = BTW_WAVE_TIME/2
 JELLY_BALL_SIZE = 1
 
 TURRET_TYPE = {
@@ -79,6 +84,12 @@ WK_ATK_SPEED = 5
 WK_SPEED = 0.5
 WK_SPRITE_START=9
 
+MED_DMG = 3
+MED_HP = 20
+MED_ATK_SPEED = 5
+MED_SPEED = 0.5
+MED_SPRITE_START=9
+
 TNK_DMG = 10
 TNK_HP = 100
 TNK_ATK_SPEED = 10
@@ -99,6 +110,14 @@ CMD_TO_POD = {}
 SMOKE = {}
 
 ALIEN_JELLY = {}
+RND_ROCKS = {}
+RND_MOUNTAINS = {}
+
+PRICE_MSG='too few jellies'
+PRICE_OFFSET=64
+
+OCC_MSG='no space here'
+OCC_OFFSET=64
 
 function sbtn(b)
     if LOCKED_BTN == b then
@@ -115,7 +134,17 @@ Camera = {
     _x=0,
     _y=0,
     scr_shk_str = 0,
+    occupied=false,
+    price=false,
+    delay_cntr=0,
     update = function()
+        if Camera.occupied or Camera.price then
+            Camera.delay_cntr -= 1
+            if Camera.delay_cntr < 0 then
+                Camera.occupied = false
+                Camera.price = false
+            end
+        end
         if PLAYER_LOCKED then
             if PLAYER_POD != nil then
                 Camera._x = PLAYER_POD.x-64
@@ -138,7 +167,21 @@ Camera = {
         if str == nil then str = 4 end
         Camera.scr_shk_str = str
     end,
+    occupied_error = function()
+        Camera.occupied = true
+        Camera.delay_cntr = 60
+    end,
+    price_error = function()
+        Camera.price = true
+        Camera.delay_cntr = 60
+    end,
     draw = function()
+        if Camera.delay_cntr > 0 and Camera.occupied then
+            print(OCC_MSG, OCC_OFFSET+Camera.x(), 48, 8)
+        end
+        if Camera.delay_cntr > 0 and Camera.price then
+            print(PRICE_MSG, PRICE_OFFSET+Camera.x(), 48, 8)
+        end
         if DEBUG then
             -- print('mem:'.. stat(0), 0+Camera.x(), 0, 7)
             -- print('cpu:'.. stat(1), 0+Camera.x(), 8, 7)
@@ -161,7 +204,7 @@ Camera = {
         end
         print("cmds: ", Camera.x(), 8*r, 7)
         for i=1,#CMDS do
-            spr(33 + CMDS[i], Camera.x() + 9 * (i + 3) + 2, 8*r)
+            spr(33 + CMDS[i], Camera.x() + 9 * (i + 3) + 12, 8*r)
         end
         local right_offset = 90+Camera.x()
         print('wave:'.. GameState.wv, right_offset, 0, 2)
@@ -170,7 +213,7 @@ Camera = {
         end
         -- print('hp:'.. Tower._hp, right_offset, 16, 2)
         print('jelly:'.. GameState.jelly, right_offset, 16, 11)
-        print('aliens:'.. GameState.enemies, right_offset, 24, 3)
+        print('aliens:'.. #WEAKLINGS+#TANKS, right_offset, 24, 3)
         pal(8, 12)
         if PLAYER_LOCKED and PLAYER_POD == nil then
             draw_healthbar(right_offset, 32, 1 - (time() - PLAYER_DIED_T) / PLAYER_RESPAWN_TIME)
@@ -197,6 +240,7 @@ GameState = {
     cur = 100,
     jelly = 0,
     enemies=0,
+    tnk_wv=0,
     update = function()
         if #WEAKLINGS + #TANKS == 0 then
             GameState.cur -= 1
@@ -208,17 +252,40 @@ GameState = {
         end
     end,
     next_wave = function()
-        local spawn=GameState.wv*2
-        GameState.enemies = GameState.enemies+spawn
-        for i = 1,spawn do
-            local x = 0
-            if i%2 == 0 then
+        local difficulty=GameState.wv*2
+        local x = 0
+        local cntr = 0
+        if GameState.wv%5 == 0 and GameState.wv >= 10 then
+            GameState.tnk_wv += 1
+            while difficulty > 0+TNK_COST do
+                difficulty -= TNK_COST
+                cntr+=1
+                if cntr%2 == 0 then
+                    x = -128-(rnd(32))
+                else
+                    x = 128+(rnd(32))
+                end
+                EnemyFactory.create_tank(x)
+            end
+        end
+        while difficulty > 0+WK_COST do
+            cntr+=1
+            r = rnd(GameState.tnk_wv)
+            if cntr%2 == 0 then
                 x = -128-(rnd(32))
             else
                 x = 128+(rnd(32))
             end
-            EnemyFactory.create_weakling(x)
-            --EnemyFactory.create_tank(x)
+            if r > 0.7 then
+                EnemyFactory.create_tank(x)
+                difficulty -= WK_COST
+            elseif r > 0.5 then
+                EnemyFactory.create_medium(x)
+                difficulty -= MED_COST
+            else
+                EnemyFactory.create_weakling(x)
+                difficulty -= WK_COST
+            end
         end
     end
 }
@@ -303,19 +370,21 @@ land_pod = function(pod)
         end
     end
 
-    for e in all(WEAKLINGS) do
-        if aoe_min_x <= e._x and e._x <= aoe_max_x then
-            damage_enemy(e, e.hp + 1)
-        end
-    end
+    -- not working on enemies for some reason
+    
+    -- for e in all(WEAKLINGS) do
+    --     if aoe_min_x <= e._x and e._x <= aoe_max_x then
+    --         damage_enemy(e, e.hp + 1)
+    --     end
+    -- end
 
-    if type == POD_TYPE.Big then
-        for e in all(TANKS) do
-            if aoe_min_x <= e._x and e._x <= aoe_max_x then
-                damage_enemy(e, e.hp + 1)
-            end
-        end
-    end
+    -- if type == POD_TYPE.Big then
+    --     for e in all(TANKS) do
+    --         if aoe_min_x <= e._x and e._x <= aoe_max_x then
+    --             damage_enemy(e, e.hp + 1)
+    --         end
+    --     end
+    -- end
 end
 
 GFXFactory = {
@@ -615,6 +684,7 @@ player_move = function(dx, dy)
 end
 
 player_shoot = function()
+    if PLAYER_LOCKED then return end
     if PLAYER.cldn <= 0 then
         PLAYER.cldn = PLR_SHOOT_SPEED
         BulletFactory.create(PLAYER._x, PLAYER._y, TURRET_TYPE.Player, PLAYER.dir*5)
@@ -673,7 +743,9 @@ JellyFactory = {
         j = {
             _x=x,
             _y=y,
-            _o=0
+            _o=0,
+            _age=0,
+            _clr=11
         }
         add(ALIEN_JELLY, j)
         return j
@@ -682,13 +754,22 @@ JellyFactory = {
 }
 
 draw_jelly = function(j)
-    --circfill(j._x, j._y+sin(j._o), JELLY_BALL_SIZE, 11)
-    rectfill(j._x, j._y+sin(j._o), j._x + JELLY_BALL_SIZE, j._y+sin(j._o) + JELLY_BALL_SIZE, 11)
+    if j._age > JELLY_DECAY_TIME - THREE_SECS then
+        if j._age%10 == 0 then
+            if j._clr == 11 then j._clr = 6 else j._clr = 11 end
+        end
+    end
+    rectfill(j._x, j._y+sin(j._o), j._x + JELLY_BALL_SIZE, j._y+sin(j._o) + JELLY_BALL_SIZE, j._clr)
 end
 
+THREE_SECS = 30*3
 update_jelly = function(j)
     j._o = j._o + 0.1
     if j._o > 1 then j._o = 0 end
+    j._age += 1
+    if j._age > JELLY_DECAY_TIME then
+        del(ALIEN_JELLY, j)
+    end
 end
 
 BulletFactory = {
@@ -760,6 +841,28 @@ EnemyFactory = {
         add(WEAKLINGS, e)
         return e
     end,
+    create_medium = function(x)
+        e = {
+            _x = x,
+            _y = GROUND_Y,
+            hp = MED_HP,
+            max_hp=MED_HP,
+            type = ENEMY_TYPE.Weakling,
+            speed=MED_SPEED,
+            atk_speed=MED_ATK_SPEED,
+            dmg=MED_DMG,
+            _table=WEAKLINGS,
+            _cdwn = 0,
+            _sprite_idx=0,
+            _frame_per_sprite=10,
+            _frame_ctr=0,
+            _sprite_strt=MED_SPRITE_START,
+            _dir=1,
+            _shake_str=0
+        }
+        add(WEAKLINGS, e)
+        return e
+    end,
     create_tank = function(x)
         e = {
             _x = x,
@@ -772,7 +875,7 @@ EnemyFactory = {
             dmg=TNK_DMG,
             _table=TANKS,
             _cdwn = 0,
-            _sprite_idx=0,
+            _sprite_idx=41,
             _frame_per_sprite=15,
             _frame_ctr=0,
             _sprite_strt=TNK_SPRITE_START,
@@ -928,7 +1031,6 @@ function damage_enemy(enemy, dmg)
     if enemy.hp <= 0 then
         JellyFactory.create(enemy._x, enemy._y)
         del(enemy._table, enemy)
-        GameState.enemies = GameState.enemies - 1
     end
 end
 
@@ -959,8 +1061,8 @@ function is_pod_spot_free(x, size)
     return true
 end
 
-CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=2, factory=AntiPersonnelTurretFactory.create, name="Turret"}
-CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=6, factory=WallFactory.create, name="Wall"}
+CMD_TO_POD[{0, 1 , 2, 1}] = {type=POD_TYPE.Normal, size=4, price=20, factory=AntiPersonnelTurretFactory.create, name="Turret"}
+CMD_TO_POD[{0, 3, 2, 3}] = {type=POD_TYPE.Normal, size=4, price=15, factory=WallFactory.create, name="Wall"}
 CMD_TO_POD[{1, 3, 3, 0}] = {type=POD_TYPE.Big, size=8, price=100, factory=AntiTankTurretFactory.create, name="Canon"}
 
 function check_cmds(cmds)
@@ -978,14 +1080,14 @@ function check_cmds(cmds)
         if same then
             -- Check if the spot is free
             if GameState.jelly < cfg.price then
-                -- error GFX
-                -- error SFX
+                Camera.price_error()
                 return
             end
 
             if not is_pod_spot_free(PLAYER._x, cfg.size) then
                 -- error GFX?
                 -- error SFX
+                Camera.occupied_error()
                 return
             end
 
@@ -1075,6 +1177,16 @@ end
 function _draw()
  cls(1)
  rectfill(-20+Camera.x(),99+Camera.y(),140+Camera.x(),130+Camera.y(),4)
+ ybase = 99+Camera.y()
+ for rock in all(RND_MOUNTAINS) do
+    rectfill(rock.x,ybase+10,rock.x+rock.size*20,ybase-rock.size*20,4)
+ end
+ for rock in all(RND_ROCKS) do
+    if abs(rock.x) > 16 then
+        rectfill(rock.x,100,rock.x+rock.size*16,100+rock.size*16,2)
+    end
+ end
+
  -- circfill(stone_x%127,stone_y%127,2,6)
 
  player_draw()
@@ -1120,7 +1232,16 @@ function _init()
     if not DEBUG then
         show_ggj_logo(34,2.5,10)
     end
-
+    for i=1,128 do
+        r = rnd(1)
+        if r < 0.5 then
+            add(RND_ROCKS, {x=(i-64)*8, size=r})
+        end
+        m = rnd(1)
+        if m < 0.5 then
+            add(RND_MOUNTAINS, {x=(i-64)*8, size=m})
+        end
+    end
     PLAYER_POD = PodFactory.create(POD_TYPE.Normal, 10, 0, PlayerFactory.create, -200)
     PLAYER_LOCKED = true
 end
