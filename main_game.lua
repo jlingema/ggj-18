@@ -116,7 +116,9 @@ Camera = {
         end
         local right_offset = 90+Camera.x()
         print('wave:'.. GameState.wv, right_offset, 0, 2)
-        print('next:'.. ceil(GameState.cur / 30), right_offset, 8, 2)
+        if (GameState.cur < BTW_WAVE_TIME) then
+            print('next:'.. ceil(GameState.cur / 30), right_offset, 8, 7)
+        end
         print('hp:'.. Tower._hp, right_offset, 16, 2)
         print('jelly:'.. GameState.jelly, right_offset, 24, 11)
         print('aliens:'.. GameState.enemies, right_offset, 32, 3)
@@ -544,13 +546,26 @@ BulletFactory = {
 function update_bullet(bullet, enemies)
     pre_x = bullet.x
     bullet.x = bullet.x+bullet.speed
+    local dir = 1
+    if pre_x > bullet.x then dir = -1 end
     bullet.y = bullet.y-1
     if bullet.y < GROUND_Y+4 then bullet.y = GROUND_Y+4 end
     for e in all (enemies) do
-        if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
-            damage_enemy(e, bullet.dmg)
-            return true
+        if dir > 0 then
+            if pre_x < e._x and e._x <= bullet.x then
+                damage_enemy(e, bullet.dmg)
+                return true
+            end
+        else
+            if pre_x > e._x and e._x >= bullet.x then
+                damage_enemy(e, bullet.dmg)
+                return true
+            end
         end
+        -- if (e._x > pre_x and e._x < bullet.x) or (e._x < pre_x and e._x > bullet.x) then
+        --     damage_enemy(e, bullet.dmg)
+        --     return true
+        -- end
     end
     return false
 end
