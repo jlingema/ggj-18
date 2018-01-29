@@ -129,6 +129,8 @@ PRICE_OFFSET=64
 OCC_MSG='no space here'
 OCC_OFFSET=64
 
+DEFEND_TOWER_MSG_X=128
+
 function sbtn(b)
     if LOCKED_BTN == b then
         -- A locked button is unlocked once unpressed. This is for preventing
@@ -193,7 +195,7 @@ Camera = {
             print(PRICE_MSG, PRICE_OFFSET+Camera.x(), 48, 8)
         end
         if PLAYER then
-            if abs(PLAYER._x) > 96 then
+            if abs(PLAYER._x) > DEFEND_TOWER_MSG_X then
                 print('defend the tower', Camera.x()+32, 56, 8)
             end
         end
@@ -1071,7 +1073,7 @@ function damage_enemy(enemy, dmg)
     enemy.hp = enemy.hp - dmg
     if enemy.hp <= 0 then
         for i=1,JELLY_NUMBER_LUT[enemy.type] do
-            JellyFactory.create(enemy._x, PLAYER_BASE_Y + 4)
+            JellyFactory.create(enemy._x + rnd(4) - 2, PLAYER_BASE_Y + 4)
         end
         del(enemy._table, enemy)
     end
