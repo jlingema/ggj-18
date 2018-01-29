@@ -28,6 +28,7 @@ TWR_HP = 300
 WALL_HP = 250
 
 BTW_WAVE_TIME = 10 * 30 -- 10 sec at 30 fps
+START_BTW_WAVE_TIME = 3 * 30 -- 3 sec at 30 fps
 
 AP_SHOOT_SPEED = 5 -- 5 frames between shoots
 AP_HP = 20
@@ -78,8 +79,8 @@ DMG_LUT = {
         [ENEMY_TYPE.Tank] = 1,
     },
     [TURRET_TYPE.AntiTank] = {
-        [ENEMY_TYPE.Weakling] = 0.5,
-        [ENEMY_TYPE.Tank] = 150
+        [ENEMY_TYPE.Weakling] = 5, -- felt like it should kill them, punishing enough because of cooldown
+        [ENEMY_TYPE.Tank] = 100
     }
 }
 JELLY_NUMBER_LUT = {
@@ -95,15 +96,15 @@ WK_SPEED = 0.7
 WK_SPRITE_START=9
 
 MED_DMG = 4
-MED_HP = 30
+MED_HP = 50
 MED_ATK_SPEED = 5
-MED_SPEED = 0.5
-MED_SPRITE_START=9
+MED_SPEED = 0.6
+MED_SPRITE_START=41
 
 TNK_DMG = 10
-TNK_HP = 100
+TNK_HP = 150
 TNK_ATK_SPEED = 10
-TNK_SPEED = 0.25
+TNK_SPEED = 0.3
 TNK_SPRITE_START=41
 
 PODS = {}
@@ -268,14 +269,18 @@ GameState = {
         if #WEAKLINGS + #TANKS == 0 then
             GameState.cur -= 1
             if GameState.cur <= 0 then
-                GameState.cur = BTW_WAVE_TIME
-                GameState.wv = GameState.wv+1
+                if GameState.wv < 5 then
+                    GameState.cur = START_BTW_WAVE_TIME
+                else
+                    GameState.cur = BTW_WAVE_TIME
+                end
                 GameState.next_wave()
             end
         end
     end,
     next_wave = function()
         DEBUG_DIFFICULTY = {}
+        GameState.wv = GameState.wv+1
         local difficulty=GameState.wv*2
         local x = 0
         local cntr = 0
@@ -302,10 +307,10 @@ GameState = {
             else
                 x = 128+(rnd(32))
             end
-            if r > 0.7 and difficulty > TNK_COST then
+            if r > 0.9 and difficulty >= TNK_COST then
                 EnemyFactory.create_tank(x)
                 difficulty -= TNK_COST
-            elseif r > 0.5 and difficulty > MED_COST then
+            elseif r > 0.5 and difficulty >= MED_COST then
                 EnemyFactory.create_medium(x)
                 difficulty -= MED_COST
             else
