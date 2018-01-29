@@ -40,7 +40,7 @@ AT_RANGE = AP_RANGE * 3
 PLR_HP = 20
 PLR_HEAL = 5 / 30 -- health back per sec
 PLR_SAFE_TIME_BEFORE_HEAL = 3
-PLR_SPEED = 1
+PLR_SPEED = 1.5
 PLR_SHOOT_SPEED = 5 -- larger = slower
 PLAYER_LOCKED = true
 PLAYER_POD = nil
@@ -91,11 +91,11 @@ JELLY_NUMBER_LUT = {
 WK_DMG = 2
 WK_HP = 10
 WK_ATK_SPEED = 5
-WK_SPEED = 0.5
+WK_SPEED = 0.7
 WK_SPRITE_START=9
 
-MED_DMG = 3
-MED_HP = 20
+MED_DMG = 4
+MED_HP = 30
 MED_ATK_SPEED = 5
 MED_SPEED = 0.5
 MED_SPRITE_START=9
@@ -279,7 +279,7 @@ GameState = {
         local cntr = 0
         if (GameState.wv)%5 == 0 and GameState.wv >= 10 then
             GameState.tnk_wv += 1
-            while difficulty > TNK_COST do
+            while difficulty >= TNK_COST do
                 add(DEBUG_DIFFICULTY, difficulty)
                 difficulty -= TNK_COST
                 cntr+=1
@@ -291,7 +291,7 @@ GameState = {
                 EnemyFactory.create_tank(x)
             end
         end
-        while difficulty > WK_COST do
+        while difficulty >= WK_COST do
             add(DEBUG_DIFFICULTY, difficulty)
             cntr+=1
             r = rnd(GameState.tnk_wv)
