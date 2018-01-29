@@ -218,12 +218,16 @@ Camera = {
         for keys, cfg in pairs(CMD_TO_POD) do
             print(cfg.name, Camera.x(), r*8, 6)
             print('(' .. cfg.price .. ')', Camera.x()+26, r*8, 11)
-            for i=1,#keys do
-                spr(57 + keys[i], Camera.x() + 9 * (i + 3) + 12, 8 * r)
+            if IS_IN_CMD_MODE then
+                for i=1,#keys do
+                    spr(57 + keys[i], Camera.x() + 9 * (i + 3) + 12, 8 * r)
+                end
             end
             r+=1
         end
-        print("cmds: ", Camera.x(), 8*r, 7)
+        if IS_IN_CMD_MODE then
+            print("command: ", Camera.x(), 8*r, 7)
+        end
         for i=1,#CMDS do
             spr(33 + CMDS[i], Camera.x() + 9 * (i + 3) + 12, 8*r)
         end
